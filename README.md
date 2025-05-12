@@ -1,5 +1,5 @@
 # jalf
-__jalf__ (jax-ed alf) is (yet another) Python translation of the Absorption Line Fitter [__alf__](https://github.com/cconroy20/alf/tree/master/src). The is already another pythonified version of __alf__, [__alfpy__](https://github.com/menggu-astro/alfpy), made by Meng Gu. __alfpy__ does sampling via Dynasty and emcee, __jalf__ runs on Numpyro using NUTS (no u-turn sampler). This makes it very fast, and there is lots of Numpyro/jax related stuff out there that you can use it with.
+__jalf__ (jax-ed alf) is (yet another) Python translation of the Absorption Line Fitter [__alf__](https://github.com/cconroy20/alf/tree/master/src). There is already another pythonified version of __alf__, [__alfpy__](https://github.com/menggu-astro/alfpy), made by Meng Gu. __alfpy__ does sampling via Dynasty and emcee, __jalf__ runs on Numpyro using NUTS (no u-turn sampler). This makes it very fast, and there is lots of Numpyro/jax related stuff out there that you can use it with.
 
 
 ## Overview

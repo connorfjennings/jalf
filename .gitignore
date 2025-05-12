@@ -1,2 +1,4 @@
-indata/
 scripts_051025.zip
+scripts/test.ipynb
+results/*
+indata/*

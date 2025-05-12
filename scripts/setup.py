@@ -1,0 +1,196 @@
+import numpy as np
+import jax.numpy as jnp
+
+from smoothing import batch_smooth_scan
+
+def get_list_indicies(list,args):
+    inds = []
+    for arg in args:
+        inds.append(list.index(arg))
+    return np.array(inds)
+
+def read_hotspec_models(infiles):
+    z_strings  = ['-1.50','-1.00','-0.50','+0.00','+0.25']
+    z_values = np.array([-1.5,-1.0,-0.5,0.0,0.25])
+    hotteff_values = np.array([8.0,10.,12.,14.,16.,18.,20.,22.,24.,26.,28.,30.])
+
+    hotspec_value_grid = np.meshgrid(z_values,hotteff_values,indexing='ij')
+
+    filename = f'{infiles}hotteff_feh{z_strings[0]}.dat'
+    f22 = np.loadtxt(filename,unpack=True)
+    lam_hotspec = f22[0]
+
+    flux_hotspec_grid = np.zeros(np.append(hotspec_value_grid[0].shape,lam_hotspec.shape))
+
+    for z, _ in enumerate(z_values):
+        filename = f'{infiles}hotteff_feh{z_strings[z]}.dat'
+        f22 = np.loadtxt(filename, unpack=True)
+
+        column_index = 1
+        for i, _ in enumerate(hotteff_values):
+            flux_hotspec_grid[z,i] = f22[column_index]
+            column_index+=1
+    lam_hotspec = jnp.array(lam_hotspec)
+    flux_hotspec_grid = jnp.array(flux_hotspec_grid)
+    z_values = jnp.array(z_values)
+    hotteff_values = jnp.array(hotteff_values)
+    
+    return lam_hotspec, (z_values,hotteff_values), flux_hotspec_grid
+
+def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa'):
+    chem_type = 'atlas'
+    atlas_imf = 'krpa'
+
+    z_strings  = ['m1.5','m1.0','m0.5','p0.0','p0.2']
+    z_values = np.array([-1.5,-1.0,-0.5,0.0,0.2])
+    t_strings  = ['01','03','05','09','13']
+    t_values = np.array([1.0,3.0,5.0,9.0,13.0])
+    logt_values = np.log10(t_values)
+
+    #get wavelengths from chem files
+    filename = f'{infiles}{chem_type}_ssp_t{t_strings[0]}_Z{z_strings[0]}.abund.{atlas_imf}.s100'
+    f22 = np.loadtxt(filename,unpack=True)
+    lam_chem = f22[0]
+
+    chem_col_names = ['lam','solar','nap','nam','cap','cam','fep','fem',
+                            'cp','cm','d1','np','nm','ap','tip','tim','mgp','mgm',
+                            'sip','sim','teffp','teffm','crp','mnp','bap','bam',
+                            'nip','cop','eup','srp','kp','vp','cup','nap6','nap9']
+    #need to sort into (lam,logage,Zmet,p/n) shape (n_lam,n_logage,n_zmet,2)
+
+    chem_names = ['solar','na','ca','fe','c','n','a','ti','mg','si','teff','cr','mn','ba','ni','co','eu','sr','k','v','cu']
+    chem_dict = {}
+
+    flux_solar_grid = np.zeros((len(logt_values),len(z_values),len(lam_chem)))
+    #solar_value_grid = np.meshgrid(logt_values,z_values,indexing='ij')
+    for t,_ in enumerate(logt_values):
+        for z,_ in enumerate(z_values):
+            filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
+            f22 = np.loadtxt(filename,unpack=True)
+            flux_solar_grid[t,z] = f22[1]
+    solar_value_grids = (jnp.array(logt_values),jnp.array(z_values))
+    chem_dict['solar'] = (solar_value_grids,jnp.array(flux_solar_grid))
+
+
+    abund_ind = get_list_indicies(chem_col_names,['nam','solar','nap','nap6','nap9'])
+    abund_values = np.array([-0.3,0.0,0.3,0.6,0.9])
+    flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+    #chem_value_grid = np.meshgrid(logt_values,z_values,abund_values,indexing='ij')
+
+    for t,_ in enumerate(logt_values):
+        for z,_ in enumerate(z_values):
+            filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
+            f22 = np.loadtxt(filename,unpack=True)
+            for i,_ in enumerate(abund_ind):
+                flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+    chem_value_grids = (jnp.array(logt_values),jnp.array(z_values),jnp.array(abund_values))
+    chem_dict['na'] = (chem_value_grids,jnp.array(flux_chem_grid))
+
+
+    for chem_str in ['ca','fe','c','n','ti','mg','si','ba','teff']:
+        abund_ind = get_list_indicies(chem_col_names,[chem_str+'m','solar',chem_str+'p'])
+        if chem_str == 'c':
+            abund_values = np.array([-0.15,0.0,0.15])
+        elif chem_str == 'teff':
+            abund_values = np.array([-50.0,0.0,50.0])
+        else:
+            abund_values = np.array([-0.3,0.0,0.3])
+        flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+        #chem_value_grid = np.meshgrid(logt_values,z_values,abund_values,indexing='ij')
+
+        for t,_ in enumerate(logt_values):
+            for z,_ in enumerate(z_values):
+                filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
+                f22 = np.loadtxt(filename,unpack=True)
+                for i,_ in enumerate(abund_ind):
+                    flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+        chem_value_grids = (jnp.array(logt_values),jnp.array(z_values),jnp.array(abund_values))
+        chem_dict[chem_str] = (chem_value_grids,jnp.array(flux_chem_grid))
+
+    for chem_str in ['a','cr','mn','ni','co','eu','sr','k','v','cu']:
+        abund_ind = get_list_indicies(chem_col_names,['solar',chem_str+'p'])
+        abund_values = np.array([0.0,0.3])
+        flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+        #chem_value_grid = np.meshgrid(logt_values,z_values,abund_values,indexing='ij')
+
+        for t,_ in enumerate(logt_values):
+            for z,_ in enumerate(z_values):
+                filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
+                f22 = np.loadtxt(filename,unpack=True)
+                for i,_ in enumerate(abund_ind):
+                    flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+        chem_value_grids = (jnp.array(logt_values),jnp.array(z_values),jnp.array(abund_values))
+        chem_dict[chem_str] = (chem_value_grids,jnp.array(flux_chem_grid))
+
+    return lam_chem, chem_dict, chem_names
+
+
+def read_ssp_models(infiles,ssp_type='VCJ_v9'):
+    z_strings  = ['m1.5','m1.0','m0.5','p0.0','p0.2']
+    z_values = np.array([-1.5,-1.0,-0.5,0.0,0.2])
+    t_strings  = ['01.0','03.0','05.0','07.0','09.0','11.0','13.5']
+    t_values = np.array([1.0,3.0,5.0,7.0,9.0,11.0,13.5])
+    logt_values = np.log10(t_values)
+    imf1_values = np.arange(0.5,3.7,0.2)
+    imf2_values = np.copy(imf1_values)
+
+    ssp_value_grid = np.meshgrid(logt_values,z_values,imf1_values,imf2_values,indexing='ij')
+    ssp_value_flat = np.stack(ssp_value_grid, axis=-1).reshape(-1, 4)
+
+    #get wavelengths from ssp files
+    filename = f'{infiles}{ssp_type}_mcut0.08_t{t_strings[0]}_Z{z_strings[0]}.ssp.imf_varydoublex.s100'
+    f22 = np.loadtxt(filename,unpack=True)
+    lam_ssp = f22[0]
+
+    #get flux from ssp file grid
+    flux_ssp_grid = np.zeros(np.append(ssp_value_grid[0].shape,lam_ssp.shape))
+
+    for (t,z), _ in np.ndenumerate(ssp_value_grid[0][:,:,0,0]):
+        filename = f'{infiles}{ssp_type}_mcut0.08_t{t_strings[t]}_Z{z_strings[z]}.ssp.imf_varydoublex.s100'
+        #f22 = np.array(pd.read_csv(filename, delim_whitespace=True, header=None, comment='#'))
+        f22 = np.loadtxt(filename, unpack=True)
+
+        column_index = 1
+
+        for i1, imf1 in enumerate(imf1_values):
+            for i2, imf2 in enumerate(imf2_values):
+                flux_ssp_grid[t,z,i1,i2] = f22[column_index]
+                column_index += 1
+
+    flux_ssp_flat = flux_ssp_grid.reshape(-1, flux_ssp_grid.shape[-1])
+
+    #make everything work with jax
+    ssp_value_flat = jnp.array(ssp_value_flat)
+    ssp_value_grid = jnp.array(ssp_value_grid)
+    t_values = jnp.array(t_values)
+    logt_values = jnp.array(logt_values)
+    z_values = jnp.array(z_values)
+    imf1_values = jnp.array(imf1_values)
+    imf2_values = jnp.array(imf2_values)
+    flux_ssp_flat = jnp.array(flux_ssp_flat)
+    flux_ssp_grid = jnp.array(flux_ssp_grid)
+    
+    #return lam_ssp, ssp_value_grid, flux_ssp_grid
+    return lam_ssp, (logt_values,z_values,imf1_values,imf2_values), flux_ssp_grid
+
+def smooth_ssp_models(data,lam_ssp,flux_ssp_grid):
+    lam_data,_,_,_,ires_data = data
+    ires_model = jnp.interp(lam_ssp,lam_data,ires_data)
+    return batch_smooth_scan(lam_ssp,flux_ssp_grid,ires_model,batch_size=256)
+
+def read_data(datfile):
+    fit_regions = get_alf_header(datfile+'.dat') * 10000 #convert to angstrom
+    data = np.loadtxt(datfile+'.dat',unpack=True)
+    lam_data, flux_data, dflux_data, weights_data, ires_data = jnp.array(data)
+    return fit_regions, lam_data, flux_data, dflux_data, weights_data, ires_data
+
+
+def get_alf_header(infile):
+    #from alfpy
+    char = '#'
+    header = []
+    with open(infile, "r") as myfile:
+        for line in myfile:
+            if line.startswith(char):
+                header.append([float(item) for item in line[1:].split()])
+    return np.array(header)

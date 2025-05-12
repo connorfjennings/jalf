@@ -33,6 +33,14 @@ def jalf(filename, tag):
 
     #todo, define the priors up here and reference later (priors are defined around line 220)
 
+    use_multiple_cpus = False
+
+    if use_multiple_cpus:
+        num_cpus = max([os.cpu_count(),int(os.environ.get("SLURM_CPUS_PER_TASK", "1"))])
+        numpyro.set_host_device_count(num_cpus)
+        print(f'Using {num_cpus} cpus')
+
+
 
     alf_home = os.environ.get('ALF_HOME')
     jalf_home = os.environ.get('JALF_HOME')
@@ -135,11 +143,20 @@ def jalf(filename, tag):
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(model_fit)
-    mcmc = MCMC(
-        kernel,
-        num_warmup=burn_in_length,
-        num_samples=samples_length,
-    )
+    if use_multiple_cpus:
+        mcmc = MCMC(
+            kernel,
+            num_warmup=burn_in_length,
+            num_samples=samples_length,
+            num_chains=2,
+            chain_method="parallel"
+        )
+    else:
+        mcmc = MCMC(
+            kernel,
+            num_warmup=burn_in_length,
+            num_samples=samples_length,
+        )
     mcmc.run(rng_key)
     
     mcmc.print_summary()

@@ -17,7 +17,7 @@ def jalf(filename, tag):
     burn_in_length = 500 #numpyro calls this "warmup"
     samples_length = 1500
 
-    ang_per_poly_degree = 100
+    ang_per_poly_degree = 200
 
     #NUTS is very particular about errors, if you underestimate it will do a horrible job
     error_mult = 1.5
@@ -30,6 +30,8 @@ def jalf(filename, tag):
 
     #todo, set grange bassed on assumed max velocity dispersion, grange=50 should be good for sigma<500km/s
     grange=50
+
+    progress_bar_bool = True #turn this off if running using slurm
 
     #todo, define the priors up here and reference later (priors are defined around line 220)
 
@@ -63,13 +65,13 @@ def jalf(filename, tag):
     print('Getting initial velocity estimates...')
     def vel_fit():
         #fit just velz and sigma
-        velz = numpyro.sample('velz', dist.Normal(0.0,3))
+        velz = numpyro.sample('velz', dist.Normal(0.0,5))
         velz = velz * 100
         sigma = numpyro.sample('sigma', dist.Uniform(0.2,5))
         sigma = sigma * 100
         df = numpyro.sample("df", dist.Exponential(1.0))  
 
-        params = (jnp.log10(8.0),0.0,1.3,2.3,velz,sigma,\
+        params = (jnp.log10(10.0),0.0,1.3,2.3,velz,sigma,\
                 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-6.0,10.0,-6.0)
         _, _, _, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
@@ -80,7 +82,8 @@ def jalf(filename, tag):
     mcmc = MCMC(
         kernel,
         num_warmup=500,
-        num_samples=200,
+        num_samples=500,
+        progress_bar = progress_bar_bool,
     )
     mcmc.run(rng_key)
     mcmc.print_summary()
@@ -132,14 +135,14 @@ def jalf(filename, tag):
         hotteff = numpyro.sample('hotteff',dist.Uniform(8.0,30.0))
         logm7g = numpyro.sample('logm7g',dist.Uniform(-6.0,-1.0))
 
-        #df = numpyro.sample("df", dist.Exponential(1/df_median))  
+        df = numpyro.sample("df", dist.Exponential(1/df_median))  
 
         params = (logage,Z,imf1,imf2,velz,sigma,\
                     nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
                     loghot,hotteff,logm7g)
         _, _, _, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
-            numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_mult),obs=flux_d_region[i])
+            numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]*error_mult),obs=flux_d_region[i])
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(model_fit)
@@ -148,14 +151,16 @@ def jalf(filename, tag):
             kernel,
             num_warmup=burn_in_length,
             num_samples=samples_length,
-            num_chains=2,
-            chain_method="parallel"
+            num_chains=num_cpus,
+            chain_method="parallel",
+            progress_bar=progress_bar_bool
         )
     else:
         mcmc = MCMC(
             kernel,
             num_warmup=burn_in_length,
             num_samples=samples_length,
+            progress_bar=progress_bar_bool
         )
     mcmc.run(rng_key)
     

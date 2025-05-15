@@ -106,6 +106,7 @@ class model:
 
         self.chem_dict = chem_dict_smooth
         self.flux_ssp_grid = flux_ssp_grid_smooth
+        self.log_flux_ssp_grid = jnp.log10(self.flux_ssp_grid)
         self.ssp_value_grid = ssp_value_grid
         self.flux_hotspec_grid = flux_hotspec_grid_smooth
         self.hotspec_value_grid = hotspec_value_grid
@@ -142,7 +143,8 @@ class model:
     get_response = jit(get_response,static_argnames=('self','chem_name'))
 
     def ssp_interp(self,age,Z,imf1,imf2):
-        return interpolate_nd_jax((age,Z,imf1,imf2),self.ssp_value_grid,self.flux_ssp_grid,n_dims=4)
+        logssp = interpolate_nd_jax((age,Z,imf1,imf2),self.ssp_value_grid,self.log_flux_ssp_grid,n_dims=4)
+        return 10**(logssp)
     ssp_interp = jit(ssp_interp,static_argnames=('self'))
 
     def hotspec_interp(self,Z,hotteff):
@@ -211,7 +213,8 @@ class model:
         flux = flux + (10**loghot)*self.hotspec_interp(Z,hotteff)
 
         #M7 star
-        flux = flux + (10**logm7g)*self.flux_M7
+        fy = (10**logm7g)
+        flux = (1-fy)*flux + fy*self.flux_M7 #not sure why this is treated differently than the hotstar, but same as in alf
 
         wl_d_region = []
         flux_d_region = []

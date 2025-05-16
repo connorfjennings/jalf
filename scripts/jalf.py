@@ -17,7 +17,7 @@ def jalf(filename, tag):
     burn_in_length = 500 #numpyro calls this "warmup"
     samples_length = 1500
 
-    ang_per_poly_degree = 200
+    ang_per_poly_degree = 100
 
     #NUTS is very particular about errors, if you underestimate it will do a horrible job
     error_mult = 1.5
@@ -38,7 +38,7 @@ def jalf(filename, tag):
     use_multiple_cpus = False
 
     if use_multiple_cpus:
-        num_cpus = max([os.cpu_count(),int(os.environ.get("SLURM_CPUS_PER_TASK", "1"))])
+        num_cpus = min([os.cpu_count(),int(os.environ.get("SLURM_CPUS_PER_TASK", "1"))])
         numpyro.set_host_device_count(num_cpus)
         print(f'Using {num_cpus} cpus')
 
@@ -102,7 +102,7 @@ def jalf(filename, tag):
         logage = jnp.log10(age)
         Z = numpyro.sample('Z', dist.Uniform(-1.8,0.3))
         imf1 = numpyro.sample('imf1', dist.Uniform(0.5,3.5))
-        imf2 = numpyro.sample('imf2', dist.Uniform(0.5,3.5))
+        imf2 = imf1#numpyro.sample('imf2', dist.Uniform(0.5,3.5))
         velz = numpyro.sample('velz', dist.Normal(velz_mean_est,0.5))
         velz = velz * 100
         sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean_est,1,low=0.1))
@@ -131,9 +131,9 @@ def jalf(filename, tag):
         teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
         teff = teff*100
 
-        loghot = numpyro.sample('loghot',dist.Uniform(-6.0,-1.0))
+        loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
         hotteff = numpyro.sample('hotteff',dist.Uniform(8.0,30.0))
-        logm7g = numpyro.sample('logm7g',dist.Uniform(-6.0,-1.0))
+        logm7g = numpyro.sample('logm7g',dist.Uniform(-10.0,-1.0))
 
         df = numpyro.sample("df", dist.Exponential(1/df_median))  
 

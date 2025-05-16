@@ -5,6 +5,7 @@ import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS
 import arviz as az
+import os
 
 from interpolate import interpolate_nd_jax
 from smoothing import batch_smooth_scan, velbroad, fast_smooth4_variable_sigma
@@ -22,21 +23,30 @@ class model:
         self.grange = grange
 
         #read in data to fit
-        fit_regions, lam_data, flux_data, dflux_data, weights_data, ires_data = setup.read_data(indata_file)
+        if os.path.exists(indata_file+'.dat'):
+            fit_regions, lam_data, flux_data, dflux_data, weights_data, ires_data = setup.read_data(indata_file)
+            self.fit_regions = fit_regions
+            self.lam_data = lam_data
+            self.flux_data = flux_data
+            self.dflux_data = dflux_data
+            self.weights_data = weights_data
+            self.ires_data = ires_data
 
-        self.fit_regions = fit_regions
-        self.lam_data = lam_data
-        self.flux_data = flux_data
-        self.dflux_data = dflux_data
-        self.weights_data = weights_data
-        self.ires_data = ires_data
-
-        print('Indata loaded')
-        if np.max(ires_data) <= 1:
-            print('No instrument resolution given')
-            smooth_to_ires = False
+            print('Indata loaded')
+            indata_exists = True
+            if np.max(ires_data) <= 1:
+                print('No instrument resolution given')
+                smooth_to_ires = False
+            else:
+                smooth_to_ires = True
         else:
-            smooth_to_ires = True
+            print('No indata detected')
+            smooth_to_ires = False
+            indata_exists = False
+
+        
+
+    
 
         #read in ssp grid
         print('Loading SSP grid')
@@ -113,27 +123,28 @@ class model:
         self.flux_M7 = flux_M7_smooth
         self.lam_model = lam_ssp
 
-        #--------SETUP JIT FUNCTIONS------------#
-        self.fit_regions_model_ind = []
-        self.fit_regions_data_ind = []
-        self.fit_regions_poly_deg = []
-        for i in range(fit_regions.shape[0]):
-            i_start_model = int(np.searchsorted(self.lam_model,fit_regions[i,0]))
-            i_stop_model = int(np.searchsorted(self.lam_model,fit_regions[i,1]))
-            self.fit_regions_model_ind.append(tuple((i_start_model,i_stop_model)))
-            i_start_data = int(np.searchsorted(self.lam_data,fit_regions[i,0]))
-            i_stop_data = int(np.searchsorted(self.lam_data,fit_regions[i,1]))
-            self.fit_regions_data_ind.append(tuple((i_start_data,i_stop_data)))
+        if indata_exists:
+            #--------SETUP JIT FUNCTIONS------------#
+            self.fit_regions_model_ind = []
+            self.fit_regions_data_ind = []
+            self.fit_regions_poly_deg = []
+            for i in range(fit_regions.shape[0]):
+                i_start_model = int(np.searchsorted(self.lam_model,fit_regions[i,0]))
+                i_stop_model = int(np.searchsorted(self.lam_model,fit_regions[i,1]))
+                self.fit_regions_model_ind.append(tuple((i_start_model,i_stop_model)))
+                i_start_data = int(np.searchsorted(self.lam_data,fit_regions[i,0]))
+                i_stop_data = int(np.searchsorted(self.lam_data,fit_regions[i,1]))
+                self.fit_regions_data_ind.append(tuple((i_start_data,i_stop_data)))
 
-            region_size = fit_regions[i,1] - fit_regions[i,0]
-            poly_deg = int(np.floor(region_size/ang_per_poly_degree))
-            self.fit_regions_poly_deg.append(poly_deg)
-            print(f'Region {i} has size {region_size:.2f} ang, normalized with poly degree {poly_deg}')
+                region_size = fit_regions[i,1] - fit_regions[i,0]
+                poly_deg = int(np.floor(region_size/ang_per_poly_degree))
+                self.fit_regions_poly_deg.append(poly_deg)
+                print(f'Region {i} has size {region_size:.2f} ang, normalized with poly degree {poly_deg}')
 
-        self.n_regions = len(self.fit_regions_model_ind)
-        self.region_name_list = []
-        for i in range(self.n_regions):
-            self.region_name_list.append(f"Region {i+1}")
+            self.n_regions = len(self.fit_regions_model_ind)
+            self.region_name_list = []
+            for i in range(self.n_regions):
+                self.region_name_list.append(f"Region {i+1}")
 
     def get_response(self,chem_name,logt,z,abund,flux_solar):
         value_grid, flux_grid = self.chem_dict[chem_name]
@@ -176,6 +187,49 @@ class model:
         flux_1 = lax.dynamic_slice(flux, (i_start,), (size,))
         return wl_1, flux_1
     get_region = jit(get_region,static_argnames=('self','wl_range_ind'))
+
+    def model_flux_total(self,params):
+        clight = 299792.46
+        age,Z,imf1,imf2,velz,sigma,\
+            nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                loghot,hotteff,logm7g = params
+        
+        flux = self.ssp_interp(age,Z,imf1,imf2)
+        wl = self.lam_model * (velz/clight + 1)
+
+        flux_solar = interpolate_nd_jax((age,Z),self.chem_dict['solar'][0],self.chem_dict['solar'][1],n_dims=2)
+        flux = flux * self.get_response('na',age,Z,nah,flux_solar)
+        flux = flux * self.get_response('ca',age,Z,cah,flux_solar)
+        flux = flux * self.get_response('fe',age,Z,feh,flux_solar)
+        flux = flux * self.get_response('c',age,Z,ch,flux_solar)
+        flux = flux * self.get_response('n',age,Z,nh,flux_solar)
+        flux = flux * self.get_response('a',age,Z,ah,flux_solar)
+        flux = flux * self.get_response('ti',age,Z,tih,flux_solar)
+        flux = flux * self.get_response('mg',age,Z,mgh,flux_solar)
+        flux = flux * self.get_response('si',age,Z,sih,flux_solar)
+        flux = flux * self.get_response('mn',age,Z,mnh,flux_solar)
+        flux = flux * self.get_response('ba',age,Z,bah,flux_solar)
+        flux = flux * self.get_response('ni',age,Z,nih,flux_solar)
+        flux = flux * self.get_response('co',age,Z,coh,flux_solar)
+        flux = flux * self.get_response('eu',age,Z,euh,flux_solar)
+        flux = flux * self.get_response('sr',age,Z,srh,flux_solar)
+        flux = flux * self.get_response('k',age,Z,kh,flux_solar)
+        flux = flux * self.get_response('v',age,Z,vh,flux_solar)
+        flux = flux * self.get_response('cu',age,Z,cuh,flux_solar)
+
+        #special case for teff, force use of 13gyr model
+        flux = flux * self.get_response('teff',jnp.log10(13),Z,teff,flux_solar)
+
+        #hotstars
+        flux = flux + (10**loghot)*self.hotspec_interp(Z,hotteff)
+
+        #M7 star
+        fy = (10**logm7g)
+        flux = (1-fy)*flux + fy*self.flux_M7 #not sure why this is treated differently than the hotstar, but same as in alf
+
+        flux = velbroad(wl,flux,sigma)
+
+        return wl, flux
 
     def model_flux_regions(self,params):
         clight = 299792.46

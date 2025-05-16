@@ -2,3 +2,4 @@ scripts_051025.zip
 scripts/test.ipynb
 results/*
 indata/*
+scripts/__pycache__/*

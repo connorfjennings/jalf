@@ -142,7 +142,7 @@ def jalf(filename, tag):
                     loghot,hotteff,logm7g)
         _, _, _, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
-            numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]*error_mult),obs=flux_d_region[i])
+            numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]),obs=flux_d_region[i])
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(model_fit)

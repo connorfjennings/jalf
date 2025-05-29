@@ -4,7 +4,9 @@ from jax import random, lax, vmap, jit
 import numpyro
 import numpyro.distributions as dist
 from numpyro.infer import MCMC, NUTS
+from numpyro.infer.util import initialize_model
 import arviz as az
+from copy import deepcopy
 
 from interpolate import interpolate_nd_jax
 from smoothing import batch_smooth_scan, velbroad, fast_smooth4_variable_sigma
@@ -19,14 +21,15 @@ def jalf(filename, tag):
 
     ang_per_poly_degree = 100
 
-    #NUTS is very particular about errors, if you underestimate it will do a horrible job
-    error_mult = 1.5
-    error_mult_vel = 2.5
+    young_old_cutoff_age = 8.0#Gyr, defines priors
 
     #infiles
     ssp_type = 'VCJ_v9'
     chem_type='atlas'
     atlas_imf='krpa'
+    weights_type = 'H2O_weights'
+    #weights here work differently from how they do in alf: they are applied to the final velocity
+    #shifted values, and don't move with the input spectra. To-deweight suspicious lines (i.e. water)
 
     #todo, set grange bassed on assumed max velocity dispersion, grange=50 should be good for sigma<500km/s
     grange=50
@@ -48,15 +51,18 @@ def jalf(filename, tag):
     jalf_home = os.environ.get('JALF_HOME')
 
     indata_file = jalf_home+'indata/'+filename
+    weights_file = jalf_home+'infiles/'+weights_type+'.dat'
 
     #setup the model
     mo = model(indata_file,
                ssp_type = ssp_type,chem_type=chem_type,atlas_imf=atlas_imf,
-               ang_per_poly_degree = ang_per_poly_degree,grange=grange)
+               ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file)
 
     #get data from model
-    params = (jnp.log10(8.0),0.0,1.3,2.3,0,100,\
-                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-6.0,10.0,-6.0)
+    params = (jnp.log10(8.0),0.0,1.3,2.3,0.0,100.0,\
+                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
+                -6.0,10.0,-6.0,\
+                jnp.log10(2.0),-6.0)
 
     wl_d_region, flux_d_region, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
     
@@ -72,8 +78,10 @@ def jalf(filename, tag):
         df = numpyro.sample("df", dist.Exponential(1.0))  
 
         params = (jnp.log10(10.0),0.0,1.3,2.3,velz,sigma,\
-                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,-6.0,10.0,-6.0)
-        _, _, _, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
+                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
+                -6.0,10.0,-6.0,\
+                jnp.log10(2.0),-6.0)
+        _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
             numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]),obs=flux_d_region[i])
 
@@ -131,18 +139,25 @@ def jalf(filename, tag):
         teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
         teff = teff*100
 
-        loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
+        loghot = numpyro.sample('loghot',dist.Uniform(-6.0,-2.0))
         hotteff = numpyro.sample('hotteff',dist.Uniform(8.0,30.0))
-        logm7g = numpyro.sample('logm7g',dist.Uniform(-10.0,-1.0))
+        logm7g = numpyro.sample('logm7g',dist.Uniform(-6.0,-2.0))
+
+        age_young = numpyro.sample('age_young',dist.Uniform(1,8))
+        logage_young = jnp.log10(age_young)
+        log_frac_young = numpyro.sample('log_frac_young',dist.Uniform(-6,-1))
 
         df = numpyro.sample("df", dist.Exponential(1/df_median))  
 
         params = (logage,Z,imf1,imf2,velz,sigma,\
                     nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
-                    loghot,hotteff,logm7g)
-        _, _, _, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
+                    loghot,hotteff,logm7g,\
+                    logage_young,log_frac_young)
+        _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
             numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]),obs=flux_d_region[i])
+
+    initial_params = {'velz':velz_mean_est,'sigma':sigma_mean_est}
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(model_fit)
@@ -162,7 +177,15 @@ def jalf(filename, tag):
             num_samples=samples_length,
             progress_bar=progress_bar_bool
         )
-    mcmc.run(rng_key)
+
+    #set initial parameters for a faster fit
+    param_info, potential_fn, transform_fn, _ = initialize_model(rng_key, model_fit)
+    mutable_constrained = deepcopy(param_info[0])
+    mutable_constrained['velz'] = jnp.array(velz_mean_est)
+    mutable_constrained['sigma'] = jnp.array(sigma_mean_est)
+    init_unconstrained = transform_fn(mutable_constrained)
+
+    mcmc.run(rng_key,init_params=init_unconstrained)
     
     mcmc.print_summary()
     posterior_samples = mcmc.get_samples()

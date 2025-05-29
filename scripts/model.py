@@ -14,8 +14,13 @@ import setup
 class model:
     def __init__(self, indata_file,
                   ssp_type = 'VCJ_v9',chem_type='atlas',atlas_imf='krpa',
-                  ang_per_poly_degree = 100,grange=50):
-        
+                  ang_per_poly_degree = 100,grange=50,weights_file='NA',
+                  fit_two_ages=True,
+                  ):
+        #--------KNOW FIT OPTIONS----------#
+        self.fit_two_ages=fit_two_ages
+
+
         #--------SET UP DATA AND GRIDS----------#
         alf_home = os.environ.get('ALF_HOME')
         jalf_home = os.environ.get('JALF_HOME')
@@ -44,9 +49,13 @@ class model:
             smooth_to_ires = False
             indata_exists = False
 
-        
-
-    
+        if os.path.exists(weights_file):
+            self.lam_weights, self.value_weights = np.loadtxt(weights_file,unpack=True)
+            print('Weights loaded')
+            self.use_weights = True
+        else:
+            print('Not using weights')
+            self.use_weights = False
 
         #read in ssp grid
         print('Loading SSP grid')
@@ -234,11 +243,18 @@ class model:
     def model_flux_regions(self,params):
         clight = 299792.46
         age,Z,imf1,imf2,velz,sigma,\
-            nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
-                loghot,hotteff,logm7g = params
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        loghot,hotteff,logm7g,\
+        age_young, log_frac_young = params
+        #keep in mind "age" here is actually log10(age)
         
         flux = self.ssp_interp(age,Z,imf1,imf2)
         wl = self.lam_model * (velz/clight + 1)
+
+        if self.fit_two_ages:
+            flux_young = self.ssp_interp(age_young,Z,imf1,imf2)
+            fy = 10**log_frac_young
+            flux = flux_young*fy + flux*(1-fy)
 
         flux_solar = interpolate_nd_jax((age,Z),self.chem_dict['solar'][0],self.chem_dict['solar'][1],n_dims=2)
         flux = flux * self.get_response('na',age,Z,nah,flux_solar)
@@ -285,6 +301,10 @@ class model:
             wl_d_zeroed = wl_d - wl_d[0]
             p = jnp.polyfit(wl_d_zeroed,flux_d/flux_m_interp,self.fit_regions_poly_deg[i])
             flux_m_norm = flux_m_interp * jnp.polyval(p,wl_d_zeroed)
+
+            if self.use_weights:
+                weights_interp = jnp.interp(wl_d,self.lam_weights,self.value_weights)
+                dflux_d = dflux_d/weights_interp
 
             wl_d_region.append(wl_d)
             flux_d_region.append(flux_d)

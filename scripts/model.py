@@ -10,15 +10,17 @@ import os
 from interpolate import interpolate_nd_jax
 from smoothing import batch_smooth_scan, velbroad, fast_smooth4_variable_sigma
 import setup
+import m2l
 
 class model:
     def __init__(self, indata_file,
                   ssp_type = 'VCJ_v9',chem_type='atlas',atlas_imf='krpa',
                   ang_per_poly_degree = 100,grange=50,weights_file='NA',
-                  fit_two_ages=True,
+                  fit_two_ages=True,fit_emlines=True,
                   ):
         #--------KNOW FIT OPTIONS----------#
         self.fit_two_ages=fit_two_ages
+        self.fit_emlines =fit_emlines
 
 
         #--------SET UP DATA AND GRIDS----------#
@@ -132,6 +134,9 @@ class model:
         self.flux_M7 = flux_M7_smooth
         self.lam_model = lam_ssp
 
+        #get emission line centers
+        self.emlines = jnp.array(setup.define_emlines())
+
         if indata_exists:
             #--------SETUP JIT FUNCTIONS------------#
             self.fit_regions_model_ind = []
@@ -197,59 +202,19 @@ class model:
         return wl_1, flux_1
     get_region = jit(get_region,static_argnames=('self','wl_range_ind'))
 
-    def model_flux_total(self,params):
-        clight = 299792.46
-        age,Z,imf1,imf2,velz,sigma,\
-            nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
-                loghot,hotteff,logm7g = params
-        
-        flux = self.ssp_interp(age,Z,imf1,imf2)
-        wl = self.lam_model * (velz/clight + 1)
 
-        flux_solar = interpolate_nd_jax((age,Z),self.chem_dict['solar'][0],self.chem_dict['solar'][1],n_dims=2)
-        flux = flux * self.get_response('na',age,Z,nah,flux_solar)
-        flux = flux * self.get_response('ca',age,Z,cah,flux_solar)
-        flux = flux * self.get_response('fe',age,Z,feh,flux_solar)
-        flux = flux * self.get_response('c',age,Z,ch,flux_solar)
-        flux = flux * self.get_response('n',age,Z,nh,flux_solar)
-        flux = flux * self.get_response('a',age,Z,ah,flux_solar)
-        flux = flux * self.get_response('ti',age,Z,tih,flux_solar)
-        flux = flux * self.get_response('mg',age,Z,mgh,flux_solar)
-        flux = flux * self.get_response('si',age,Z,sih,flux_solar)
-        flux = flux * self.get_response('mn',age,Z,mnh,flux_solar)
-        flux = flux * self.get_response('ba',age,Z,bah,flux_solar)
-        flux = flux * self.get_response('ni',age,Z,nih,flux_solar)
-        flux = flux * self.get_response('co',age,Z,coh,flux_solar)
-        flux = flux * self.get_response('eu',age,Z,euh,flux_solar)
-        flux = flux * self.get_response('sr',age,Z,srh,flux_solar)
-        flux = flux * self.get_response('k',age,Z,kh,flux_solar)
-        flux = flux * self.get_response('v',age,Z,vh,flux_solar)
-        flux = flux * self.get_response('cu',age,Z,cuh,flux_solar)
-
-        #special case for teff, force use of 13gyr model
-        flux = flux * self.get_response('teff',jnp.log10(13),Z,teff,flux_solar)
-
-        #hotstars
-        flux = flux + (10**loghot)*self.hotspec_interp(Z,hotteff)
-
-        #M7 star
-        fy = (10**logm7g)
-        flux = (1-fy)*flux + fy*self.flux_M7 #not sure why this is treated differently than the hotstar, but same as in alf
-
-        flux = velbroad(wl,flux,sigma)
-
-        return wl, flux
-
-    def model_flux_regions(self,params):
+    def model_flux(self,params):
+        #does everything except the final velocity broadening and emission lines
         clight = 299792.46
         age,Z,imf1,imf2,velz,sigma,\
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
-        age_young, log_frac_young = params
+        age_young, log_frac_young,\
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii = params
         #keep in mind "age" here is actually log10(age)
         
         flux = self.ssp_interp(age,Z,imf1,imf2)
-        wl = self.lam_model * (velz/clight + 1)
+        wl = self.lam_model / (velz/clight + 1)
 
         if self.fit_two_ages:
             flux_young = self.ssp_interp(age_young,Z,imf1,imf2)
@@ -286,6 +251,88 @@ class model:
         fy = (10**logm7g)
         flux = (1-fy)*flux + fy*self.flux_M7 #not sure why this is treated differently than the hotstar, but same as in alf
 
+        return wl, flux
+    model_flux = jit(model_flux,static_argnames=('self'))
+
+    def model_emission_lines(self,wl,params):
+        clight = 299792.46
+        age,Z,imf1,imf2,velz,sigma,\
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        loghot,hotteff,logm7g,\
+        age_young, log_frac_young,\
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii = params
+
+        base_h    = 10**logemline_h
+        base_oiii = 10**logemline_oiii
+        base_nii  = 10**logemline_nii
+        base_sii  = 10**logemline_sii
+        base_oii  = 10**logemline_oii
+        base_ni   = 10**logemline_ni
+
+        base_array = jnp.array([
+                        base_h, base_h, base_h,         # Hy, Hd, Hb
+                        base_oiii, base_oiii,           # [OIII], [OIII]
+                        base_ni,                        # [NI]
+                        base_nii, base_h, base_nii,     # [NII], Ha, [NII]
+                        base_sii, base_sii,             # [SII], [SII]
+                        base_oii, base_oii,             # [OII], [OII]
+                        base_h, base_h, base_h,         # H12, H11, H10
+                        base_h, base_h, base_h,         # H9, H8, H7
+                        base_h, base_h, base_h, base_h, # Pa
+                        base_h, base_h, base_h          # Br
+                    ])
+        #Pa and Br are from pyneb, all else from Nell Byler's Cloudy lookup table (from alf)
+        scaling_factors = jnp.array([
+                        1/11.21, 1/6.16, 1/2.87,        # Hy, Hd, Hb
+                        1/3.0, 1.0,                     # [OIII]
+                        1.0,                            # [NI]
+                        1/2.95, 1.0, 1.0,               # [NII], Ha, [NII]
+                        1.0, 0.77,                      # [SII]
+                        1.0, 1.35,                      # [OII]
+                        1/65.0, 1/55.0, 1/45.0,         # H12, H11, H10
+                        1/35.0, 1/25.0, 1/18.0,         # H9, H8, H7
+                        0.118269, 0.057014, 0.031589, 0.019369,  # Pa
+                        0.009714, 0.006377, 0.004420    # Br
+                    ])
+        emnormal = base_array * scaling_factors
+
+        ve = self.emlines / (velz2/clight + 1)
+        lsig = ve*sigma2/clight
+        emline_spec = emnormal[jnp.newaxis,:]*jnp.exp(-0.5 * (wl[:,jnp.newaxis]-ve[jnp.newaxis,:])**2 / (lsig[jnp.newaxis,:]**2))
+        emline_spec = jnp.sum(emline_spec,axis=1)
+
+        return emline_spec
+    model_emission_lines = jit(model_emission_lines,static_argnames=('self'))
+
+    def model_flux_total(self,params):
+        clight = 299792.46
+        age,Z,imf1,imf2,velz,sigma,\
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        loghot,hotteff,logm7g,\
+        age_young, log_frac_young = params
+        
+        wl, flux = self.model_flux(params)
+
+        flux = velbroad(wl,flux,sigma)
+
+        #emission lines
+        if self.fit_emlines:
+            emline_spec = self.model_emission_lines(wl,params)
+            flux = flux + emline_spec
+
+        return wl, flux
+
+    def model_flux_regions(self,params):
+        clight = 299792.46
+        age,Z,imf1,imf2,velz,sigma,\
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        loghot,hotteff,logm7g,\
+        age_young, log_frac_young,\
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii = params
+        #keep in mind "age" here is actually log10(age)
+        
+        wl, flux = self.model_flux(params)
+
         wl_d_region = []
         flux_d_region = []
         dflux_d_region = []
@@ -293,10 +340,16 @@ class model:
         flux_mn_region = []
 
         for i in range(self.n_regions):
-
             wl_m,flux_m = self.get_smoothed_region(wl,flux,sigma,wl_range_ind=self.fit_regions_model_ind[i])
+
+            #emission lines
+            if self.fit_emlines:
+                emline_spec = self.model_emission_lines(wl_m,params)
+                flux_m = flux_m + emline_spec
+
             wl_d,flux_d = self.get_region(self.lam_data,self.flux_data,wl_range_ind=self.fit_regions_data_ind[i])
             _, dflux_d = self.get_region(self.lam_data,self.dflux_data,wl_range_ind=self.fit_regions_data_ind[i])
+            
             flux_m_interp = jnp.interp(wl_d,wl_m,flux_m)
             wl_d_zeroed = wl_d - wl_d[0]
             p = jnp.polyfit(wl_d_zeroed,flux_d/flux_m_interp,self.fit_regions_poly_deg[i])

@@ -184,6 +184,45 @@ def read_data(datfile):
     lam_data, flux_data, dflux_data, weights_data, ires_data = jnp.array(data)
     return fit_regions, lam_data, flux_data, dflux_data, weights_data, ires_data
 
+def read_filters(infiles):
+    filename = f'{infiles}filters.dat'
+    lam_filters, r_response, i_response, k_response = np.loadtxt(filename,unpack=True)
+    return lam_filters, r_response, i_response, k_response
+
+def define_emlines():
+    #define central wavelengths of emission lines (in vacuum)
+    emlines = np.zeros(26)
+    #these wavelengths come from NIST
+    emlines[0]  = 4102.89  # Hd
+    emlines[1]  = 4341.69  # Hy
+    emlines[2]  = 4862.71  # Hb
+    emlines[3]  = 4960.30  # [OIII]
+    emlines[4]  = 5008.24  # [OIII]
+    emlines[5]  = 5203.05  # [NI]
+    emlines[6]  = 6549.86  # [NII]
+    emlines[7]  = 6564.61  # Ha
+    emlines[8]  = 6585.27  # [NII]
+    emlines[9] = 6718.29  # [SII]
+    emlines[10] = 6732.67  # [SII]
+    emlines[11] = 3727.10  # [OII]
+    emlines[12] = 3729.86  # [OII]
+    emlines[13] = 3751.22  # Balmer
+    emlines[14] = 3771.70  # Balmer
+    emlines[15] = 3798.99  # Balmer
+    emlines[16] = 3836.49  # Balmer
+    emlines[17] = 3890.17  # Balmer
+    emlines[18] = 3971.20  # Balmer
+    #Paschen and Bracket come from Gemini
+    emlines[19] = 1.87561 * 10000 #Paschen 4-3
+    emlines[20] = 1.28216 * 10000 #Paschen 5-3
+    emlines[21] = 1.09411 * 10000 #Paschen 6-3
+    emlines[22] = 1.00521 * 10000 #Paschen 7-3
+    emlines[23] = 2.16612 * 10000 #Bracket 7-4
+    emlines[24] = 1.94509 * 10000 #Bracket 8-4
+    emlines[25] = 1.81791 * 10000 #Bracket 9-4
+
+    return emlines
+
 
 def get_alf_header(infile):
     #from alfpy

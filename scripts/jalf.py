@@ -62,7 +62,8 @@ def jalf(filename, tag):
     params = (jnp.log10(8.0),0.0,1.3,2.3,0.0,100.0,\
                 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
                 -6.0,10.0,-6.0,\
-                jnp.log10(2.0),-6.0)
+                jnp.log10(2.0),-6.0,\
+                0.0,100.0,-6.0,-6.0,-6.0,-6.0,-6.0,-6.0)
 
     wl_d_region, flux_d_region, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
     
@@ -80,7 +81,8 @@ def jalf(filename, tag):
         params = (jnp.log10(10.0),0.0,1.3,2.3,velz,sigma,\
                 0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
                 -6.0,10.0,-6.0,\
-                jnp.log10(2.0),-6.0)
+                jnp.log10(2.0),-6.0,\
+                0.0,100.0,-6.0,-6.0,-6.0,-6.0,-6.0,-6.0)
         _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
             numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]),obs=flux_d_region[i])
@@ -147,17 +149,29 @@ def jalf(filename, tag):
         logage_young = jnp.log10(age_young)
         log_frac_young = numpyro.sample('log_frac_young',dist.Uniform(-6,-1))
 
+        velz2 = numpyro.sample('velz2',dist.Normal(0,2))
+        velz2 = velz2 * 100
+
+        sigma2 = numpyro.sample('sigma2', dist.TruncatedNormal(sigma_mean_est,1,low=0.1))
+        sigma2 = sigma2 * 100
+        logemline_h     = numpyro.sample('logemline_h', dist.Uniform(-6.0,-2.0))
+        logemline_oiii  = numpyro.sample('logemline_oiii', dist.Uniform(-6.0,-2.0))
+        logemline_oii   = numpyro.sample('logemline_oii', dist.Uniform(-6.0,-2.0))
+        logemline_nii   = numpyro.sample('logemline_nii', dist.Uniform(-6.0,-2.0))
+        logemline_ni    = numpyro.sample('logemline_ni', dist.Uniform(-6.0,-2.0))
+        logemline_sii   = numpyro.sample('logemline_sii', dist.Uniform(-6.0,-2.0))
+
+
         df = numpyro.sample("df", dist.Exponential(1/df_median))  
 
         params = (logage,Z,imf1,imf2,velz,sigma,\
                     nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
                     loghot,hotteff,logm7g,\
-                    logage_young,log_frac_young)
+                    logage_young,log_frac_young,\
+                    velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii)
         _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
             numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]),obs=flux_d_region[i])
-
-    initial_params = {'velz':velz_mean_est,'sigma':sigma_mean_est}
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(model_fit)

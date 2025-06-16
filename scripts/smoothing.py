@@ -68,6 +68,36 @@ def fast_smooth5_variable_sigma(lam,inspec,sigmal):
     return outspec
 
 @jit
+def fast_smooth4_gausshermite(lam,inspec,sigma,h3,h4):
+    clight = 299792.46
+    grange = 50
+    kernel_size = 2 * grange + 1
+
+    n2 = lam.shape[0]
+    i_range = jnp.arange(n2 - 2*grange)
+    outspec = jnp.copy(inspec)
+
+    def smooth_one(carry, i):
+        x = lax.dynamic_slice(lam, (i,), (kernel_size,))
+        y = lax.dynamic_slice(inspec, (i,), (kernel_size,))
+        x_center = lax.dynamic_slice(lam, (i+grange,), (1,))[0]
+        vel = (x_center/x - 1)*clight
+        diff = vel/sigma
+
+        H3_coef = (1/jnp.sqrt(6))*(2*diff**3 - 3*diff)
+        H4_coef = (1/jnp.sqrt(24))*(4*diff**4 - 12*diff**2 +3)
+        
+        psf = jnp.exp(-(diff)**2 / 2) * (1 + h3*H3_coef + h4*H4_coef)
+        psf = psf/jnp.sum(psf)
+        smoothed_val = jnp.sum(y*psf)
+
+        return carry, smoothed_val
+    _, outspec_mid = lax.scan(smooth_one,None,i_range)
+    outspec = outspec.at[grange:n2 - grange].set(outspec_mid)
+    return outspec
+
+
+@jit
 def fast_smooth4_variable_sigma(lam,inspec,sigmal):
     #optimistic combination of fast_smooth1 and 2
     clight = 299792.46
@@ -306,10 +336,12 @@ def batch_smooth_scan(lam, inspec, sigmal, batch_size=64):
     return output[:N].reshape(*orig_shape, n_lambda)
 
 
-
-@jit
-def velbroad(lam,inspec,sigma):
+def velbroad(lam,inspec,sigma,gausshermite=False,h3=0,h4=0):
     #for the typical case where sigma is the same everywhere (km/s)
     #I *think* fast_smooth1 is the most accurate, followed by fast_smooth4 which is significantly faster
     #fast_smooth2 is fastest, but does some log + interp stuff I'm not sure I understand
-    return fast_smooth4(lam,inspec,sigma)
+    if gausshermite:
+        return fast_smooth4_gausshermite(lam,inspec,sigma,h3,h4)
+    else:
+        return fast_smooth4(lam,inspec,sigma)
+velbroad = jit(velbroad,static_argnames=('gausshermite'))

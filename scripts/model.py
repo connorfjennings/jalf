@@ -8,19 +8,20 @@ import arviz as az
 import os
 
 from interpolate import interpolate_nd_jax
-from smoothing import batch_smooth_scan, velbroad, fast_smooth4_variable_sigma
+from smoothing import batch_smooth_scan, velbroad, fast_smooth4_variable_sigma, fast_smooth4_gausshermite
 import setup
 import m2l
 
 class model:
-    def __init__(self, indata_file,
+    def __init__(self, indata_file, loud = True,
                   ssp_type = 'VCJ_v9',chem_type='atlas',atlas_imf='krpa',
                   ang_per_poly_degree = 100,grange=50,weights_file='NA',
-                  fit_two_ages=True,fit_emlines=True,
+                  fit_two_ages=True,fit_emlines=True,fit_h3h4=True,
                   ):
         #--------KNOW FIT OPTIONS----------#
         self.fit_two_ages=fit_two_ages
         self.fit_emlines =fit_emlines
+        self.fit_h3h4 = fit_h3h4
 
 
         #--------SET UP DATA AND GRIDS----------#
@@ -39,24 +40,24 @@ class model:
             self.weights_data = weights_data
             self.ires_data = ires_data
 
-            print('Indata loaded')
+            if loud: print('Indata loaded')
             indata_exists = True
             if np.max(ires_data) <= 1:
-                print('No instrument resolution given')
+                if loud: print('No instrument resolution given')
                 smooth_to_ires = False
             else:
                 smooth_to_ires = True
         else:
-            print('No indata detected')
+            if loud: print('No indata detected')
             smooth_to_ires = False
             indata_exists = False
 
         if os.path.exists(weights_file):
             self.lam_weights, self.value_weights = np.loadtxt(weights_file,unpack=True)
-            print('Weights loaded')
+            if loud: print('Weights loaded')
             self.use_weights = True
         else:
-            print('Not using weights')
+            if loud: print('Not using weights')
             self.use_weights = False
 
         #read in ssp grid
@@ -65,22 +66,22 @@ class model:
         lam_ssp, ssp_value_grid, flux_ssp_grid = setup.read_ssp_models(infiles,ssp_type=ssp_type)
 
         if smooth_to_ires:
-            print('Smoothing ssp grid to ires...')
+            if loud: print('Smoothing ssp grid to ires...')
             ires_ssp_model = jnp.interp(lam_ssp,lam_data,ires_data)
             flux_ssp_grid_smooth = batch_smooth_scan(lam_ssp,flux_ssp_grid,ires_ssp_model,batch_size=256)
             flux_ssp_grid_smooth.block_until_ready()
         else:
-            print('Skipping ires smoothing')
+            if loud: print('Skipping ires smoothing')
             flux_ssp_grid_smooth = flux_ssp_grid
         
-        print('Done!')
+        if loud: print('Done!')
 
         #read in abundance files
-        print('Loading abundance grid')
+        if loud: print('Loading abundance grid')
         lam_chem, chem_dict, chem_names = setup.read_chem_models(infiles,chem_type=chem_type,atlas_imf=atlas_imf)
 
         if smooth_to_ires:
-            print('Smoothing abundance grid to ires...')
+            if loud: print('Smoothing abundance grid to ires...')
             ires_chem_model = jnp.interp(lam_chem,lam_data,ires_data)
             chem_dict_smooth = {}
             for cname in chem_names:
@@ -91,11 +92,11 @@ class model:
                 flux_chem_grid_smooth.block_until_ready()
                 chem_dict_smooth[cname] = (chem_value_grid, flux_chem_grid_smooth)
         else:
-            print('Skipping ires smoothing')
+            if loud: print('Skipping ires smoothing')
             chem_dict_smooth = chem_dict
-        print('Done')
+        if loud: print('Done')
 
-        print('Loading hot star grid')
+        if loud: print('Loading hot star grid')
         lam_hotspec, hotspec_value_grid, flux_hotspec_grid = setup.read_hotspec_models(infiles)
 
         #normalize to 13Gyr at 1um
@@ -105,24 +106,24 @@ class model:
         hotspec_1um_flux = flux_hotspec_grid[:,:,hotspec_1um_ind]
         flux_hotspec_grid = flux_hotspec_grid * ssp_1um_flux / hotspec_1um_flux[:,:,None]
         if smooth_to_ires:
-            print('Smoothing hot star to ires...')
+            if loud: print('Smoothing hot star to ires...')
             ires_hotspec_model = jnp.interp(lam_hotspec,lam_data,ires_data)
             flux_hotspec_grid_smooth = batch_smooth_scan(lam_hotspec,flux_hotspec_grid,ires_hotspec_model)
         else:
-            print('Skipping ires smoothing')
+            if loud: print('Skipping ires smoothing')
             flux_hotspec_grid_smooth = flux_hotspec_grid
 
-        print('Loading M7III star')
+        if loud: print('Loading M7III star')
         M7_filename = f'{infiles}M7III.spec.s100'
         lam_M7, flux_M7 = np.loadtxt(M7_filename,unpack=True)
         lam_M7 = jnp.array(lam_M7)
         flux_M7 = jnp.array(flux_M7)
         if smooth_to_ires:
-            print('Smoothing hot star to ires...')
+            if loud: print('Smoothing hot star to ires...')
             ires_M7_model = jnp.interp(lam_M7,lam_data,ires_data)
             flux_M7_smooth = fast_smooth4_variable_sigma(lam_M7,flux_M7,ires_M7_model)
         else:
-            print('Skipping ires smoothing')
+            if loud: print('Skipping ires smoothing')
             flux_M7_smooth = flux_M7
 
         self.chem_dict = chem_dict_smooth
@@ -153,7 +154,7 @@ class model:
                 region_size = fit_regions[i,1] - fit_regions[i,0]
                 poly_deg = int(np.floor(region_size/ang_per_poly_degree))
                 self.fit_regions_poly_deg.append(poly_deg)
-                print(f'Region {i} has size {region_size:.2f} ang, normalized with poly degree {poly_deg}')
+                if loud: print(f'Region {i} has size {region_size:.2f} ang, normalized with poly degree {poly_deg}')
 
             self.n_regions = len(self.fit_regions_model_ind)
             self.region_name_list = []
@@ -176,7 +177,7 @@ class model:
         return interpolate_nd_jax((Z,hotteff),self.hotspec_value_grid,self.flux_hotspec_grid,n_dims=2)
     hotspec_interp = jit(hotspec_interp,static_argnames=('self'))
 
-    def get_smoothed_region(self,wl,flux,sigma,wl_range_ind):
+    def get_smoothed_region(self,wl,flux,sigma,wl_range_ind,h3,h4):
         # Clip indices to valid range
         i_start_pad = wl_range_ind[0]-self.grange#jnp.maximum(wl_range_ind[0] - grange, 0)
         i_stop_pad = wl_range_ind[1]+self.grange#jnp.minimum(wl_range_ind[1] + grange, wl.shape[0])
@@ -185,7 +186,7 @@ class model:
         wl_1 = lax.dynamic_slice(wl, (i_start_pad,), (size,))
         flux_1 = lax.dynamic_slice(flux, (i_start_pad,), (size,))
 
-        flux_1 = velbroad(wl_1,flux_1,sigma)
+        flux_1 = velbroad(wl_1,flux_1,sigma,gausshermite=self.fit_h3h4,h3=h3,h4=h4)
         wl_2 = wl_1[self.grange:-self.grange]
         flux_2 = flux_1[self.grange:-self.grange]
         return wl_2, flux_2
@@ -210,7 +211,8 @@ class model:
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
-        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii = params
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
+        h3,h4 = params
         #keep in mind "age" here is actually log10(age)
         
         flux = self.ssp_interp(age,Z,imf1,imf2)
@@ -260,7 +262,8 @@ class model:
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
-        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii = params
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
+        h3,h4 = params
 
         base_h    = 10**logemline_h
         base_oiii = 10**logemline_oiii
@@ -309,13 +312,17 @@ class model:
         age,Z,imf1,imf2,velz,sigma,\
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
-        age_young, log_frac_young = params
+        age_young, log_frac_young,\
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
+        h3,h4 = params
         
         wl, flux = self.model_flux(params)
 
-        flux = velbroad(wl,flux,sigma)
+        flux = velbroad(wl,flux,sigma,gausshermite=self.fit_h3h4,h3=h3,h4=h4)
 
         #emission lines
+        #I am handling this slightly differently than alf. There, sigma2 is used to disperse the em lines BEFORE sigma is used to
+        #broaden the entire spectra, but this seemed weird to me so I'm doing it after (so sigma2 is the actual dispersion of the em lines)
         if self.fit_emlines:
             emline_spec = self.model_emission_lines(wl,params)
             flux = flux + emline_spec
@@ -328,7 +335,8 @@ class model:
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
-        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii = params
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
+        h3,h4 = params
         #keep in mind "age" here is actually log10(age)
         
         wl, flux = self.model_flux(params)
@@ -340,7 +348,7 @@ class model:
         flux_mn_region = []
 
         for i in range(self.n_regions):
-            wl_m,flux_m = self.get_smoothed_region(wl,flux,sigma,wl_range_ind=self.fit_regions_model_ind[i])
+            wl_m,flux_m = self.get_smoothed_region(wl,flux,sigma,wl_range_ind=self.fit_regions_model_ind[i],h3=h3,h4=h4)
 
             #emission lines
             if self.fit_emlines:
@@ -349,7 +357,7 @@ class model:
 
             wl_d,flux_d = self.get_region(self.lam_data,self.flux_data,wl_range_ind=self.fit_regions_data_ind[i])
             _, dflux_d = self.get_region(self.lam_data,self.dflux_data,wl_range_ind=self.fit_regions_data_ind[i])
-            
+
             flux_m_interp = jnp.interp(wl_d,wl_m,flux_m)
             wl_d_zeroed = wl_d - wl_d[0]
             p = jnp.polyfit(wl_d_zeroed,flux_d/flux_m_interp,self.fit_regions_poly_deg[i])

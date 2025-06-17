@@ -281,7 +281,7 @@ def NGC2695_priors(velz_mean,sigma_mean):
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.Normal(-0.13,0.02))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
-    imf2 = imf1#numpyro.sample('imf2', dist.Uniform(0.9,3.5))
+    imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
     sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))

@@ -8,13 +8,11 @@ from numpyro.infer.util import initialize_model
 import arviz as az
 from copy import deepcopy
 
-from interpolate import interpolate_nd_jax
-from smoothing import batch_smooth_scan, velbroad, fast_smooth4_variable_sigma
 import setup
 from model import model
 import priors
 
-def jalf(filename, tag):
+def jalf(filename, priorname, tag):
     #--------PARAMETERS TO EDIT---------#
 
     burn_in_length = 500 #numpyro calls this "warmup"
@@ -31,6 +29,19 @@ def jalf(filename, tag):
     weights_type = 'H2O_weights'
     #weights here work differently from how they do in alf: they are applied to the final velocity
     #shifted values, and don't move with the input spectra. To-deweight suspicious lines (i.e. water)
+
+    #define the prior function
+    if priorname == 'NGC1277_center':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277center_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC1277_outer':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277outer_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC1600':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1600_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC2695':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_priors(velz_mean_est,sigma_mean_est)
+    else:
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.default_priors(velz_mean_est,sigma_mean_est)
+        print('using default priors')
 
     #todo, set grange bassed on assumed max velocity dispersion, grange=50 should be good for sigma<500km/s
     grange=50
@@ -112,7 +123,7 @@ def jalf(filename, tag):
     print('Starting main run...')
     def model_fit():
         
-        params, error_scale = priors.NGC1277outer_priors(velz_mean_est,sigma_mean_est)
+        params, error_scale = get_priors(velz_mean_est,sigma_mean_est)
         
         _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
@@ -153,9 +164,9 @@ def jalf(filename, tag):
     print('Run Finished!')
 
     if tag == '':
-        output_name_base = filename
+        output_name_base = filename+'_'+priorname
     else:
-        output_name_base = filename+'_'+tag
+        output_name_base = filename+'_'+priorname+'_'+tag
     outdir = jalf_home+'results/'
 
     idata = az.from_numpyro(mcmc)
@@ -169,6 +180,7 @@ if __name__ == "__main__":
     argv_l = sys.argv
     n_argv = len(argv_l)
     filename = argv_l[1]
-    tag = argv_l[2] if n_argv >= 3 else ''
+    priorname = argv_l[2] if n_argv >=3 else 'default'
+    tag = argv_l[3] if n_argv >= 4 else ''
     #should implement some sort of multiprocessing
-    jalf(filename, tag)
+    jalf(filename, priorname, tag)

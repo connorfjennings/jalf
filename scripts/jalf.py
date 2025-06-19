@@ -35,6 +35,8 @@ def jalf(filename, priorname, tag):
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277center_priors(velz_mean_est,sigma_mean_est)
     elif priorname == 'NGC1277_outer':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277outer_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC1407':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1407_priors(velz_mean_est,sigma_mean_est)
     elif priorname == 'NGC1600':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1600_priors(velz_mean_est,sigma_mean_est)
     elif priorname == 'NGC2695':

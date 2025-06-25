@@ -7,8 +7,9 @@ from numpyro.infer import MCMC, NUTS
 from numpyro.infer.util import initialize_model
 import arviz as az
 from copy import deepcopy
+import xarray as xr
 
-import setup
+import setup, m2l
 from model import model
 import priors
 
@@ -21,6 +22,8 @@ def jalf(filename, priorname, tag):
     ang_per_poly_degree = 100
 
     young_old_cutoff_age = 8.0#Gyr, defines priors
+
+    calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
 
     #infiles
     ssp_type = 'VCJ_v9'
@@ -163,7 +166,7 @@ def jalf(filename, priorname, tag):
     
     mcmc.print_summary()
     posterior_samples = mcmc.get_samples()
-    print('Run Finished!')
+    print('Run Finished!')   
 
     if tag == '':
         output_name_base = filename+'_'+priorname
@@ -172,6 +175,15 @@ def jalf(filename, priorname, tag):
     outdir = jalf_home+'results/'
 
     idata = az.from_numpyro(mcmc)
+
+    if calc_alpha:
+        print('Calculating alpha values...')
+        mo = model(indata_file,
+               ssp_type = 'VCJ_v8',chem_type=chem_type,atlas_imf=atlas_imf,
+               ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file)
+        idata = m2l.get_alpha_posterior(idata,mo)
+
+
     idata.to_netcdf(outdir+output_name_base+".nc")
 
     np.savez(outdir+output_name_base+'.npz', **posterior_samples)

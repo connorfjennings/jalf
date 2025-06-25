@@ -34,7 +34,7 @@ def default_priors(velz_mean,sigma_mean):
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
 
-    teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
+    teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
 
     loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
@@ -102,7 +102,7 @@ def NGC1277center_priors(velz_mean,sigma_mean):
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
 
-    teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
+    teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
 
     loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
@@ -170,7 +170,7 @@ def NGC1277outer_priors(velz_mean,sigma_mean):
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
 
-    teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
+    teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
 
     loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
@@ -238,7 +238,7 @@ def NGC1407_priors(velz_mean,sigma_mean):
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
 
-    teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
+    teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
 
     loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
@@ -306,7 +306,7 @@ def NGC1600_priors(velz_mean,sigma_mean):
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
 
-    teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
+    teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
 
     loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
@@ -375,7 +375,7 @@ def NGC2695_priors(velz_mean,sigma_mean):
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
 
-    teff = numpyro.sample('teff',dist.Uniform(-0.5,0.5))
+    teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
 
     loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))

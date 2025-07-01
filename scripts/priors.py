@@ -208,7 +208,7 @@ def NGC1277outer_priors(velz_mean,sigma_mean):
     return params, error_scale
 
 def NGC1407_priors(velz_mean,sigma_mean):
-    age = numpyro.sample("age", dist.TruncatedNormal(12.5,0.5,low=10,high=14.0))
+    age = numpyro.sample("age", dist.Normal(12.5,0.5))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.Normal(0.27,0.05))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))

@@ -124,14 +124,12 @@ def get_alpha_posterior(idata,mo):
 
     chains, draws = posterior_samples['age'].shape[:2]
 
-    # Build the full parameter matrix for get_alpha (shape: [chain, draw, n_params])
     sampled_params = []
 
     for pname in param_list:
         if pname in posterior_samples:
             arr = posterior_samples[pname]
             
-            # Apply transformations
             if pname == 'age':
                 arr = np.log10(arr)
             elif pname in ['velz', 'sigma', 'teff']:
@@ -141,7 +139,8 @@ def get_alpha_posterior(idata,mo):
             
         elif pname == 'imf2':
             # If 'imf2' is missing, duplicate 'imf1'
-            arr = posterior_samples['imf1']
+            print('duplicating imf1=imf2')
+            arr = copy.copy(posterior_samples['imf1'])
             sampled_params.append(arr)
         else:
             # Default values
@@ -150,26 +149,17 @@ def get_alpha_posterior(idata,mo):
             arr = np.full(shape, default)
             sampled_params.append(arr)
 
-    # Stack into (chain, draw, n_params)
     params_array = np.stack([np.array(p) for p in sampled_params], axis=-1)
-
-    # Flatten to (chain * draw, n_params) to pass to get_alpha
     flat_params = params_array.reshape(-1, params_array.shape[-1])
-
-    # Compute alpha values (this part can be slow if not vectorized)
     alpha_vals = np.array([get_alpha(p,mo) for p in flat_params])
-
-    # Reshape back to (chain, draw)
     alpha_vals = alpha_vals.reshape((chains, draws))
 
-    # Wrap in DataArray with correct dims/coords
     alpha_da = xr.DataArray(
         alpha_vals,
         coords=posterior_samples.coords,
         dims=posterior_samples['age'].dims
     )
 
-    # Assign to posterior
     idata.posterior['alpha'] = alpha_da
 
     return idata

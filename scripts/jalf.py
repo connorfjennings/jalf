@@ -21,7 +21,6 @@ def jalf(filename, priorname, tag):
 
     ang_per_poly_degree = 100
 
-    young_old_cutoff_age = 8.0#Gyr, defines priors
 
     calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
 
@@ -52,8 +51,6 @@ def jalf(filename, priorname, tag):
     grange=50
 
     progress_bar_bool = True #turn this off if running using slurm
-
-    #todo, define the priors up here and reference later (priors are defined around line 220)
 
     use_multiple_cpus = False
 
@@ -105,8 +102,8 @@ def jalf(filename, priorname, tag):
                 0.0,0.0)
         _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
-            #numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]),obs=flux_d_region[i])
-            numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
+            numpyro.sample(mo.region_name_list[i],dist.StudentT(1,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
+            #numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(vel_fit)

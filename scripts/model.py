@@ -64,6 +64,14 @@ class model:
         print('Loading SSP grid')
         infiles = alf_home+'infiles/'
         lam_ssp, ssp_value_grid, flux_ssp_grid = setup.read_ssp_models(infiles,ssp_type=ssp_type)
+        if (ssp_type != 'VCJ_v9') and (ssp_type != 'VCJ_v8'):
+            #should do a real compatability check here, but this works for now
+            if loud: print('chem and hotstar specs will interp to ssp when loaded')
+            self.interp_wl = True
+            wl_to_interp = lam_ssp
+        else:
+            self.interp_wl = False
+            wl_to_interp = None
 
         if smooth_to_ires:
             if loud: print('Smoothing ssp grid to ires...')
@@ -78,7 +86,8 @@ class model:
 
         #read in abundance files
         if loud: print('Loading abundance grid')
-        lam_chem, chem_dict, chem_names = setup.read_chem_models(infiles,chem_type=chem_type,atlas_imf=atlas_imf)
+        lam_chem, chem_dict, chem_names = setup.read_chem_models(infiles,chem_type=chem_type,atlas_imf=atlas_imf,
+                                                                 wl_to_interp=wl_to_interp)
 
         if smooth_to_ires:
             if loud: print('Smoothing abundance grid to ires...')
@@ -97,7 +106,8 @@ class model:
         if loud: print('Done')
 
         if loud: print('Loading hot star grid')
-        lam_hotspec, hotspec_value_grid, flux_hotspec_grid = setup.read_hotspec_models(infiles)
+        lam_hotspec, hotspec_value_grid, flux_hotspec_grid = setup.read_hotspec_models(infiles,
+                                                                                       wl_to_interp=wl_to_interp)
 
         #normalize to 13Gyr at 1um
         ssp_1um_ind = np.argmin(np.abs(10000 - lam_ssp))
@@ -106,7 +116,7 @@ class model:
         hotspec_1um_flux = flux_hotspec_grid[:,:,hotspec_1um_ind]
         flux_hotspec_grid = flux_hotspec_grid * ssp_1um_flux / hotspec_1um_flux[:,:,None]
         if smooth_to_ires:
-            if loud: print('Smoothing hot star to ires...')
+            print('Smoothing hot star to ires...')
             ires_hotspec_model = jnp.interp(lam_hotspec,lam_data,ires_data)
             flux_hotspec_grid_smooth = batch_smooth_scan(lam_hotspec,flux_hotspec_grid,ires_hotspec_model)
         else:
@@ -125,6 +135,10 @@ class model:
         else:
             if loud: print('Skipping ires smoothing')
             flux_M7_smooth = flux_M7
+        if self.interp_wl:
+            self.flux_M7 = jnp.interp(lam_ssp,lam_M7,flux_M7_smooth)
+        else:
+            self.flux_M7 = flux_M7_smooth
 
         self.chem_dict = chem_dict_smooth
         self.flux_ssp_grid = flux_ssp_grid_smooth
@@ -132,7 +146,6 @@ class model:
         self.ssp_value_grid = ssp_value_grid
         self.flux_hotspec_grid = flux_hotspec_grid_smooth
         self.hotspec_value_grid = hotspec_value_grid
-        self.flux_M7 = flux_M7_smooth
         self.lam_model = lam_ssp
 
         #get emission line centers
@@ -174,7 +187,8 @@ class model:
     ssp_interp = jit(ssp_interp,static_argnames=('self'))
 
     def hotspec_interp(self,Z,hotteff):
-        return interpolate_nd_jax((Z,hotteff),self.hotspec_value_grid,self.flux_hotspec_grid,n_dims=2)
+        hotflux = interpolate_nd_jax((Z,hotteff),self.hotspec_value_grid,self.flux_hotspec_grid,n_dims=2)
+        return hotflux
     hotspec_interp = jit(hotspec_interp,static_argnames=('self'))
 
     def get_smoothed_region(self,wl,flux,sigma,wl_range_ind,h3,h4):

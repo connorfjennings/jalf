@@ -25,7 +25,7 @@ def jalf(filename, priorname, tag):
     calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
 
     #infiles
-    ssp_type = 'VCJ_v9'
+    ssp_type = 'C3K_v5'#'VCJ_v9'
     chem_type='atlas'
     atlas_imf='krpa'
     weights_type = 'H2O_weights'

@@ -9,7 +9,7 @@ def get_list_indicies(list,args):
         inds.append(list.index(arg))
     return np.array(inds)
 
-def read_hotspec_models(infiles):
+def read_hotspec_models(infiles,wl_to_interp = None):
     z_strings  = ['-1.50','-1.00','-0.50','+0.00','+0.25']
     z_values = np.array([-1.5,-1.0,-0.5,0.0,0.25])
     hotteff_values = np.array([8.0,10.,12.,14.,16.,18.,20.,22.,24.,26.,28.,30.])
@@ -20,7 +20,10 @@ def read_hotspec_models(infiles):
     f22 = np.loadtxt(filename,unpack=True)
     lam_hotspec = f22[0]
 
-    flux_hotspec_grid = np.zeros(np.append(hotspec_value_grid[0].shape,lam_hotspec.shape))
+    if type(wl_to_interp) == type(None):
+        flux_hotspec_grid = np.zeros(np.append(hotspec_value_grid[0].shape,lam_hotspec.shape))
+    else:
+        flux_hotspec_grid = np.zeros(np.append(hotspec_value_grid[0].shape,wl_to_interp.shape))
 
     for z, _ in enumerate(z_values):
         filename = f'{infiles}hotteff_feh{z_strings[z]}.dat'
@@ -28,16 +31,22 @@ def read_hotspec_models(infiles):
 
         column_index = 1
         for i, _ in enumerate(hotteff_values):
-            flux_hotspec_grid[z,i] = f22[column_index]
+            if type(wl_to_interp) == type(None):
+                flux_hotspec_grid[z,i] = f22[column_index]
+            else:
+                flux_hotspec_grid[z,i] = np.interp(wl_to_interp,lam_hotspec,f22[column_index])
             column_index+=1
     lam_hotspec = jnp.array(lam_hotspec)
     flux_hotspec_grid = jnp.array(flux_hotspec_grid)
     z_values = jnp.array(z_values)
     hotteff_values = jnp.array(hotteff_values)
+
+    if type(wl_to_interp) != type(None):
+        lam_hotspec = wl_to_interp
     
     return lam_hotspec, (z_values,hotteff_values), flux_hotspec_grid
 
-def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa'):
+def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa',wl_to_interp = None):
     chem_type = 'atlas'
     atlas_imf = 'krpa'
 
@@ -60,21 +69,30 @@ def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa'):
 
     chem_names = ['solar','na','ca','fe','c','n','a','ti','mg','si','teff','cr','mn','ba','ni','co','eu','sr','k','v','cu']
     chem_dict = {}
-
-    flux_solar_grid = np.zeros((len(logt_values),len(z_values),len(lam_chem)))
+    
+    if type(wl_to_interp) == type(None):
+        flux_solar_grid = np.zeros((len(logt_values),len(z_values),len(lam_chem)))
+    else:
+        flux_solar_grid = np.zeros((len(logt_values),len(z_values),len(wl_to_interp)))
     #solar_value_grid = np.meshgrid(logt_values,z_values,indexing='ij')
     for t,_ in enumerate(logt_values):
         for z,_ in enumerate(z_values):
             filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
             f22 = np.loadtxt(filename,unpack=True)
-            flux_solar_grid[t,z] = f22[1]
+            if type(wl_to_interp) == type(None):
+                flux_solar_grid[t,z] = f22[1]
+            else:
+                flux_solar_grid[t,z] = np.interp(wl_to_interp,lam_chem,f22[1])
     solar_value_grids = (jnp.array(logt_values),jnp.array(z_values))
     chem_dict['solar'] = (solar_value_grids,jnp.array(flux_solar_grid))
 
 
     abund_ind = get_list_indicies(chem_col_names,['nam','solar','nap','nap6','nap9'])
     abund_values = np.array([-0.3,0.0,0.3,0.6,0.9])
-    flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+    if type(wl_to_interp) == type(None):
+        flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+    else:
+        flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(wl_to_interp)))
     #chem_value_grid = np.meshgrid(logt_values,z_values,abund_values,indexing='ij')
 
     for t,_ in enumerate(logt_values):
@@ -82,7 +100,10 @@ def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa'):
             filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
             f22 = np.loadtxt(filename,unpack=True)
             for i,_ in enumerate(abund_ind):
-                flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+                if type(wl_to_interp) == type(None):
+                    flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+                else:
+                    flux_chem_grid[t,z,i] = np.interp(wl_to_interp,lam_chem,f22[abund_ind[i]])
     chem_value_grids = (jnp.array(logt_values),jnp.array(z_values),jnp.array(abund_values))
     chem_dict['na'] = (chem_value_grids,jnp.array(flux_chem_grid))
 
@@ -95,7 +116,10 @@ def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa'):
             abund_values = np.array([-50.0,0.0,50.0])
         else:
             abund_values = np.array([-0.3,0.0,0.3])
-        flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+        if type(wl_to_interp) == type(None):
+            flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+        else:
+            flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(wl_to_interp)))
         #chem_value_grid = np.meshgrid(logt_values,z_values,abund_values,indexing='ij')
 
         for t,_ in enumerate(logt_values):
@@ -103,14 +127,20 @@ def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa'):
                 filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
                 f22 = np.loadtxt(filename,unpack=True)
                 for i,_ in enumerate(abund_ind):
-                    flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+                    if type(wl_to_interp) == type(None):
+                        flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+                    else:
+                        flux_chem_grid[t,z,i] = np.interp(wl_to_interp,lam_chem,f22[abund_ind[i]])
         chem_value_grids = (jnp.array(logt_values),jnp.array(z_values),jnp.array(abund_values))
         chem_dict[chem_str] = (chem_value_grids,jnp.array(flux_chem_grid))
 
     for chem_str in ['a','cr','mn','ni','co','eu','sr','k','v','cu']:
         abund_ind = get_list_indicies(chem_col_names,['solar',chem_str+'p'])
         abund_values = np.array([0.0,0.3])
-        flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+        if type(wl_to_interp) == type(None):
+            flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(lam_chem)))
+        else:
+            flux_chem_grid = np.zeros((len(logt_values),len(z_values),len(abund_values),len(wl_to_interp)))
         #chem_value_grid = np.meshgrid(logt_values,z_values,abund_values,indexing='ij')
 
         for t,_ in enumerate(logt_values):
@@ -118,9 +148,15 @@ def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa'):
                 filename = f'{infiles}{chem_type}_ssp_t{t_strings[t]}_Z{z_strings[z]}.abund.{atlas_imf}.s100'
                 f22 = np.loadtxt(filename,unpack=True)
                 for i,_ in enumerate(abund_ind):
-                    flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+                    if type(wl_to_interp) == type(None):
+                        flux_chem_grid[t,z,i] = f22[abund_ind[i]]
+                    else:
+                        flux_chem_grid[t,z,i] = np.interp(wl_to_interp,lam_chem,f22[abund_ind[i]])
         chem_value_grids = (jnp.array(logt_values),jnp.array(z_values),jnp.array(abund_values))
         chem_dict[chem_str] = (chem_value_grids,jnp.array(flux_chem_grid))
+
+    if type(wl_to_interp) != type(None):
+        lam_chem = wl_to_interp
 
     return lam_chem, chem_dict, chem_names
 
@@ -170,7 +206,6 @@ def read_ssp_models(infiles,ssp_type='VCJ_v9'):
     flux_ssp_flat = jnp.array(flux_ssp_flat)
     flux_ssp_grid = jnp.array(flux_ssp_grid)
     
-    #return lam_ssp, ssp_value_grid, flux_ssp_grid
     return lam_ssp, (logt_values,z_values,imf1_values,imf2_values), flux_ssp_grid
 
 def smooth_ssp_models(data,lam_ssp,flux_ssp_grid):

@@ -4,23 +4,6 @@ import math, numpy as np
 import jax
 
 
-def interp_1d(xs, xp, fp):
-    #not sure this in necisarry. ChatGPT thinks that this will work better with numpy differentiation
-    #my tests say that jnp.interp works just fine, so using that instead
-    """
-    Vectorized, differentiable linear interpolation for JAX.
-    Interpolates values at `xs` given knots `xp` and `fp`, all 1D arrays.
-    """
-    idxs = jnp.clip(jnp.searchsorted(xp, xs, side="right") - 1, 0, xp.shape[0] - 2)
-
-    x0 = xp[idxs]
-    x1 = xp[idxs + 1]
-    y0 = fp[idxs]
-    y1 = fp[idxs + 1]
-
-    slope = (y1 - y0) / (x1 - x0)
-    return y0 + slope * (xs - x0)
-
 @jit
 def fast_smooth1(lam, inspec,sigmal):
     #from alfpy, modified to work with jit

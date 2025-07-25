@@ -25,10 +25,10 @@ def jalf(filename, priorname, tag):
     calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
 
     #infiles
-    ssp_type = 'C3K_v5'#'VCJ_v9'
+    ssp_type = 'VCJ_v9'
     chem_type='atlas'
     atlas_imf='krpa'
-    weights_type = 'H2O_weights'
+    weights_type = 'default'#'H2O_weights'
     #weights here work differently from how they do in alf: they are applied to the final velocity
     #shifted values, and don't move with the input spectra. To-deweight suspicious lines (i.e. water)
 
@@ -47,6 +47,10 @@ def jalf(filename, priorname, tag):
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1407_KCWI_priors(velz_mean_est,sigma_mean_est)
     elif priorname == 'NGC2695_KCWI':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_KCWI_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC1407_2017':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1407_2017_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC2695_2012':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_2012_priors(velz_mean_est,sigma_mean_est)
     else:
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.default_priors(velz_mean_est,sigma_mean_est)
         print('using default priors')

@@ -378,7 +378,7 @@ class model:
             flux_m_norm = flux_m_interp * jnp.polyval(p,wl_d_zeroed)
 
             if self.use_weights:
-                weights_interp = jnp.interp(wl_d,self.lam_weights,self.value_weights)
+                weights_interp = jnp.interp(wl_d,self.lam_weights,self.value_weights,left=1.0,right=1.0)
                 dflux_d = dflux_d/weights_interp
 
             wl_d_region.append(wl_d)

@@ -53,7 +53,8 @@ class model:
             indata_exists = False
 
         if os.path.exists(weights_file):
-            self.lam_weights, self.value_weights = np.loadtxt(weights_file,unpack=True)
+            lam_weights, self.value_weights = np.loadtxt(weights_file,unpack=True)
+            self.lam_weights = lam_weights*1e4
             if loud: print('Weights loaded')
             self.use_weights = True
         else:

@@ -101,7 +101,7 @@ def jalf(filename, priorname, tag):
         #fit just velz and sigma
         velz = numpyro.sample('velz', dist.Normal(0.0,5))
         velz = velz * 100
-        sigma = numpyro.sample('sigma', dist.Uniform(0.2,5))
+        sigma = numpyro.sample('sigma', dist.Uniform(0.2,8))
         sigma = sigma * 100
         #df = numpyro.sample("df", dist.Exponential(1.0))
         error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(2.0),1.0))

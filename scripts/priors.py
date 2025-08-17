@@ -24,7 +24,7 @@ def NGC1600_2017_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -94,7 +94,7 @@ def NGC2695_2017_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -164,7 +164,7 @@ def NGC1407_KCWI_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -234,7 +234,7 @@ def NGC1407_2017_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -304,7 +304,7 @@ def NGC2695_KCWI_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -374,7 +374,7 @@ def NGC2695_2012_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -442,7 +442,7 @@ def default_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -503,14 +503,14 @@ def default_priors(velz_mean,sigma_mean):
     return params, error_scale
 
 def NGC1277center_priors(velz_mean,sigma_mean):
-    age = numpyro.sample("age", dist.Normal(11.5,0.2))
+    age = numpyro.sample("age", dist.TruncatedNormal(11.5,0.2,low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.Normal(0.41,0.02))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -571,14 +571,14 @@ def NGC1277center_priors(velz_mean,sigma_mean):
     return params, error_scale
 
 def NGC1277outer_priors(velz_mean,sigma_mean):
-    age = numpyro.sample("age", dist.Normal(13.5,1))
+    age = numpyro.sample("age", dist.TruncatedNormal(13.5,1.0,low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.Normal(0.2,0.1))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -646,7 +646,7 @@ def NGC1407_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -714,7 +714,7 @@ def NGC1600_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Normal(0.46,0.2))
@@ -783,7 +783,7 @@ def NGC2695_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))

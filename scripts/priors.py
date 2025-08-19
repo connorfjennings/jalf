@@ -574,7 +574,8 @@ def default_priors(velz_mean,sigma_mean):
 def NGC1277center_priors(velz_mean,sigma_mean):
     age = numpyro.sample("age", dist.TruncatedNormal(11.5,0.2,low=10.0,high=14.0))
     logage = jnp.log10(age)
-    Z = numpyro.sample('Z', dist.Normal(0.41,0.02))
+    Z = numpyro.sample('Z', dist.TrancatedNormal(0.3,0.02,low=-1.8,high=0.3))
+    #should be mean of 0.41 but doesn't go that high
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
@@ -583,15 +584,15 @@ def NGC1277center_priors(velz_mean,sigma_mean):
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
-    cah = numpyro.sample('cah',dist.Normal(0.35,0.15))
+    cah = numpyro.sample('cah',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
     feh = numpyro.sample('feh',dist.Uniform(-0.3,0.5))
 
     ch = numpyro.sample('ch',dist.Uniform(-0.3,0.5))
     nh = numpyro.sample('nh',dist.Uniform(-0.3,1))
     ah = numpyro.sample('ah',dist.Uniform(-0.3,0.5))
-    tih = numpyro.sample('tih',dist.Normal(0.35,0.15))
-    mgh = numpyro.sample('mgh',dist.Normal(0.35,0.15))
-    sih = numpyro.sample('sih',dist.Normal(0.35,0.15))
+    tih = numpyro.sample('tih',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
+    mgh = numpyro.sample('mgh',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
+    sih = numpyro.sample('sih',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
     mnh = numpyro.sample('mnh',dist.Uniform(-0.3,0.5))
     bah = numpyro.sample('bah',dist.Uniform(-0.6,0.5))
     nih = numpyro.sample('nih',dist.Uniform(-0.3,0.5))
@@ -642,7 +643,7 @@ def NGC1277center_priors(velz_mean,sigma_mean):
 def NGC1277outer_priors(velz_mean,sigma_mean):
     age = numpyro.sample("age", dist.TruncatedNormal(13.5,1.0,low=10.0,high=14.0))
     logage = jnp.log10(age)
-    Z = numpyro.sample('Z', dist.Normal(0.2,0.1))
+    Z = numpyro.sample('Z', dist.TruncatedNormal(0.2,0.1,low=-1.8,high=0.3))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
@@ -651,15 +652,15 @@ def NGC1277outer_priors(velz_mean,sigma_mean):
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
-    cah = numpyro.sample('cah',dist.Normal(0.35,0.15))
+    cah = numpyro.sample('cah',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
     feh = numpyro.sample('feh',dist.Uniform(-0.3,0.5))
 
     ch = numpyro.sample('ch',dist.Uniform(-0.3,0.5))
     nh = numpyro.sample('nh',dist.Uniform(-0.3,1))
     ah = numpyro.sample('ah',dist.Uniform(-0.3,0.5))
-    tih = numpyro.sample('tih',dist.Normal(0.35,0.15))
-    mgh = numpyro.sample('mgh',dist.Normal(0.35,0.15))
-    sih = numpyro.sample('sih',dist.Normal(0.35,0.15))
+    tih = numpyro.sample('tih',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
+    mgh = numpyro.sample('mgh',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
+    sih = numpyro.sample('sih',dist.TruncatedNormal(0.35,0.15,low=-0.3,high=0.5))
     mnh = numpyro.sample('mnh',dist.Uniform(-0.3,0.5))
     bah = numpyro.sample('bah',dist.Uniform(-0.6,0.5))
     nih = numpyro.sample('nih',dist.Uniform(-0.3,0.5))

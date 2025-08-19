@@ -12,7 +12,7 @@ NGC2695_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 NGC1600_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 
 pwm = 1.0
-
+error_scale_dist = dist.LogNormal(jnp.log(5.0),2.0)
 
 def NGC1600_2017_priors(velz_mean,sigma_mean):
     df = NGC1600_2017_df
@@ -74,7 +74,7 @@ def NGC1600_2017_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -144,7 +144,7 @@ def NGC2695_2017_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -214,7 +214,7 @@ def NGC1407_KCWI_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -284,7 +284,7 @@ def NGC1407_2017_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -354,7 +354,7 @@ def NGC2695_KCWI_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -424,7 +424,7 @@ def NGC2695_2012_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -492,7 +492,7 @@ def MWimf_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -561,7 +561,7 @@ def default_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -574,7 +574,7 @@ def default_priors(velz_mean,sigma_mean):
 def NGC1277center_priors(velz_mean,sigma_mean):
     age = numpyro.sample("age", dist.TruncatedNormal(11.5,0.2,low=10.0,high=14.0))
     logage = jnp.log10(age)
-    Z = numpyro.sample('Z', dist.TrancatedNormal(0.3,0.02,low=-1.8,high=0.3))
+    Z = numpyro.sample('Z', dist.TruncatedNormal(0.3,0.02,low=-1.8,high=0.3))
     #should be mean of 0.41 but doesn't go that high
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
@@ -630,7 +630,7 @@ def NGC1277center_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -698,7 +698,7 @@ def NGC1277outer_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -766,7 +766,7 @@ def NGC1407_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -834,7 +834,7 @@ def NGC1600_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
@@ -903,7 +903,7 @@ def NGC2695_priors(velz_mean,sigma_mean):
     h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
 
     #df = numpyro.sample("df", dist.Exponential(1/df_median))
-    error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(5.0),1.0))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
                 nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\

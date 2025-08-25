@@ -57,8 +57,8 @@ def jalf(filename, priorname, tag):
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1600_2017_priors(velz_mean_est,sigma_mean_est)
     elif priorname == 'MWimf':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.MWimf_priors(velz_mean_est,sigma_mean_est)
-    elif (priorname == 'fixed_imf_NGC1407_2017') or (priorname == 'fixed_imf_NGC1600_2017') (priorname == 'fixed_imf_NGC2695_2017'):
-        get_priors = lambda velz_mean_est,sigma_mean_est, priorname: priors.fixed_imf_priors(velz_mean_est,sigma_mean_est,priorname)
+    elif (priorname == 'fixed_imf_NGC1407_2017') or (priorname == 'fixed_imf_NGC1600_2017') or (priorname == 'fixed_imf_NGC2695_2017'):
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.fixed_imf_priors(velz_mean_est,sigma_mean_est,df_name=priorname)
     else:
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.default_priors(velz_mean_est,sigma_mean_est)
         print('using default priors')

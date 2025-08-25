@@ -12,7 +12,84 @@ NGC2695_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 NGC1600_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 
 pwm = 1.0
-error_scale_dist = dist.LogNormal(jnp.log(5.0),2.0)
+error_scale_dist = dist.LogNormal(jnp.log(10.0),2.0)
+
+def fixed_imf_priors(velz_mean,sigma_mean,df_name):
+    if df_name == 'fixed_imf_NGC1407_2017':
+        df = NGC1407_2017_df
+    elif df_name == 'fixed_imf_NGC1600_2017':
+        df = NGC1600_2017_df
+    elif df_name == 'fixed_imf_NGC2695_2017':
+        df = NGC2695_2017_df
+    else:
+        print('Problem finding distribution function, check priors')
+        df = NGC2695_2017_df
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    logage = jnp.log10(age)
+    Z = numpyro.sample('Z', dist.Uniform(-1.8,0.3))
+    imf1 = numpyro.sample("imf1", dist.TruncatedNormal(df['imf1'][0],df['imf1'][1]*pwm,low=0.9,high=3.5))
+    imf2 = numpyro.sample("imf2", dist.TruncatedNormal(df['imf2'][0],df['imf2'][1]*pwm,low=0.9,high=3.5))
+    velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
+    velz = velz * 100
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = sigma * 100
+
+    nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
+    cah = numpyro.sample('cah',dist.Uniform(-0.3,0.5))
+    feh = numpyro.sample('feh',dist.Uniform(-0.3,0.5))
+
+    ch = numpyro.sample('ch',dist.Uniform(-0.3,0.5))
+    nh = numpyro.sample('nh',dist.Uniform(-0.3,1))
+    ah = numpyro.sample('ah',dist.Uniform(-0.3,0.5))
+    tih = numpyro.sample('tih',dist.Uniform(-0.3,0.5))
+    mgh = numpyro.sample('mgh',dist.Uniform(-0.3,0.5))
+    sih = numpyro.sample('sih',dist.Uniform(-0.3,0.5))
+    mnh = numpyro.sample('mnh',dist.Uniform(-0.3,0.5))
+    bah = numpyro.sample('bah',dist.Uniform(-0.6,0.5))
+    nih = numpyro.sample('nih',dist.Uniform(-0.3,0.5))
+    coh = numpyro.sample('coh',dist.Uniform(-0.3,0.5))
+    euh = numpyro.sample('euh',dist.Uniform(-0.6,0.5))
+    srh = numpyro.sample('srh',dist.Uniform(-0.3,0.5))
+    kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
+    vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
+    cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+
+    teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
+    teff = teff*100
+
+    loghot = numpyro.sample('loghot',dist.Uniform(-10.0,-1.0))
+    hotteff = numpyro.sample('hotteff',dist.Uniform(8.0,30.0))
+    logm7g = numpyro.sample('logm7g',dist.Uniform(-10.0,-1.0))
+
+    age_young = numpyro.sample('age_young',dist.Uniform(1,8))
+    logage_young = jnp.log10(age_young)
+    log_frac_young = numpyro.sample('log_frac_young',dist.Uniform(-10,-1))
+
+    velz2 = numpyro.sample('velz2',dist.Normal(0,2))
+    velz2 = velz2 * 100
+
+    sigma2 = numpyro.sample('sigma2', dist.TruncatedNormal(sigma_mean,1,low=0.1))
+    sigma2 = sigma2 * 100
+    logemline_h     = numpyro.sample('logemline_h', dist.Uniform(-10.0,-1.0))
+    logemline_oiii  = numpyro.sample('logemline_oiii', dist.Uniform(-10.0,-1.0))
+    logemline_oii   = numpyro.sample('logemline_oii', dist.Uniform(-10.0,-1.0))
+    logemline_nii   = numpyro.sample('logemline_nii', dist.Uniform(-10.0,-1.0))
+    logemline_ni    = numpyro.sample('logemline_ni', dist.Uniform(-10.0,-1.0))
+    logemline_sii   = numpyro.sample('logemline_sii', dist.Uniform(-10.0,-1.0))
+
+    h3 = numpyro.sample('h3',dist.Normal(0.0,0.1))
+    h4 = numpyro.sample('h4',dist.Normal(0.0,0.1))
+
+    #df = numpyro.sample("df", dist.Exponential(1/df_median))
+    error_scale = numpyro.sample("error_scale",error_scale_dist)
+
+    params = (logage,Z,imf1,imf2,velz,sigma,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                loghot,hotteff,logm7g,\
+                logage_young,log_frac_young,\
+                velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
+                h3,h4)
+    return params, error_scale
 
 def NGC1600_2017_priors(velz_mean,sigma_mean):
     df = NGC1600_2017_df

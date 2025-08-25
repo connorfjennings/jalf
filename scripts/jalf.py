@@ -19,13 +19,13 @@ def jalf(filename, priorname, tag):
     burn_in_length = 500 #numpyro calls this "warmup"
     samples_length = 1500
 
-    ang_per_poly_degree = 100
+    ang_per_poly_degree = 200
 
 
     calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
 
     #infiles
-    ssp_type = 'VCJ_v9'
+    ssp_type = 'C3K_v5' #'VCJ_v9'
     chem_type='atlas'
     atlas_imf='krpa'
     weights_type = 'default'#'H2O_weights'
@@ -57,6 +57,8 @@ def jalf(filename, priorname, tag):
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1600_2017_priors(velz_mean_est,sigma_mean_est)
     elif priorname == 'MWimf':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.MWimf_priors(velz_mean_est,sigma_mean_est)
+    elif (priorname == 'fixed_imf_NGC1407_2017') or (priorname == 'fixed_imf_NGC1600_2017') (priorname == 'fixed_imf_NGC2695_2017'):
+        get_priors = lambda velz_mean_est,sigma_mean_est, priorname: priors.fixed_imf_priors(velz_mean_est,sigma_mean_est,priorname)
     else:
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.default_priors(velz_mean_est,sigma_mean_est)
         print('using default priors')
@@ -143,8 +145,8 @@ def jalf(filename, priorname, tag):
         
         _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
-            #numpyro.sample(mo.region_name_list[i],dist.StudentT(df,flux_mn_region[i],dflux_d_region[i]),obs=flux_d_region[i])
-            numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
+            numpyro.sample(mo.region_name_list[i],dist.StudentT(10,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
+            #numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
 
 
     rng_key = random.PRNGKey(42)

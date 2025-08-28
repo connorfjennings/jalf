@@ -20,8 +20,10 @@ def jalf(filename, priorname, tag):
     samples_length = 2000
 
     ang_per_poly_degree = 100
-    ang_per_poly_degree_15000_mult = 1.5
+    ang_per_poly_degree_15000_mult = 1.5 #multiplier for bins greater than 15000 ang
+    poly_degree_13300 = 1 #degree if bin stradles 13300 ang (H2O onset)
 
+    StudentT_dof = 5 #make very large to approach normal errors
 
     calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
 
@@ -88,7 +90,8 @@ def jalf(filename, priorname, tag):
     mo = model(indata_file,
                ssp_type = ssp_type,chem_type=chem_type,atlas_imf=atlas_imf,
                ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file,
-               ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult)
+               ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult,
+               poly_degree_13300=poly_degree_13300)
 
     #get data from model
     params = (jnp.log10(8.0),0.0,1.3,2.3,0.0,100.0,\
@@ -120,7 +123,7 @@ def jalf(filename, priorname, tag):
                 0.0,0.0)
         _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
-            numpyro.sample(mo.region_name_list[i],dist.StudentT(5,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
+            numpyro.sample(mo.region_name_list[i],dist.StudentT(StudentT_dof,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
             #numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
 
     rng_key = random.PRNGKey(42)

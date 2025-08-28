@@ -11,8 +11,8 @@ NGC2695_2012_df = pd.read_csv('../infiles/NGC2695_2012_param_summary.csv')
 NGC2695_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 NGC1600_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 
-pwm = 1.0
-error_scale_dist = dist.LogNormal(jnp.log(10.0),2.0)
+pwm = 2.0 #multiplier on ABUNDANCES ONLY since you might want to relax this
+error_scale_dist = dist.LogNormal(jnp.log(5.0),2.0)
 
 def fixed_imf_priors(velz_mean,sigma_mean,df_name):
     if df_name == 'fixed_imf_NGC1407_2017':
@@ -24,14 +24,14 @@ def fixed_imf_priors(velz_mean,sigma_mean,df_name):
     else:
         print('Problem finding distribution function, check priors')
         df = NGC2695_2017_df
-    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.Uniform(-1.8,0.3))
     imf1 = numpyro.sample("imf1", dist.TruncatedNormal(df['imf1'][0],df['imf1'][1]*pwm,low=0.9,high=3.5))
     imf2 = numpyro.sample("imf2", dist.TruncatedNormal(df['imf2'][0],df['imf2'][1]*pwm,low=0.9,high=3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -93,15 +93,14 @@ def fixed_imf_priors(velz_mean,sigma_mean,df_name):
 
 def NGC1600_2017_priors(velz_mean,sigma_mean):
     df = NGC1600_2017_df
-    #pwm = 2.0 #Prior width multiplier (for gaussians)
-    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.TruncatedNormal(df['Z'][0],df['Z'][1]*pwm,low=-1.8,high=0.3))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -163,15 +162,14 @@ def NGC1600_2017_priors(velz_mean,sigma_mean):
 
 def NGC2695_2017_priors(velz_mean,sigma_mean):
     df = NGC2695_2017_df
-    #pwm = 2.0 #Prior width multiplier (for gaussians)
-    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.TruncatedNormal(df['Z'][0],df['Z'][1]*pwm,low=-1.8,high=0.3))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -233,15 +231,14 @@ def NGC2695_2017_priors(velz_mean,sigma_mean):
 
 def NGC1407_KCWI_priors(velz_mean,sigma_mean):
     df = NGC1407_df
-    #pwm = 2.0 #Prior width multiplier (for gaussians)
-    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.TruncatedNormal(df['Z'][0],df['Z'][1]*pwm,low=-1.8,high=0.3))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -303,15 +300,14 @@ def NGC1407_KCWI_priors(velz_mean,sigma_mean):
 
 def NGC1407_2017_priors(velz_mean,sigma_mean):
     df = NGC1407_2017_df
-    #pwm = 2.0 #Prior width multiplier (for gaussians)
-    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.TruncatedNormal(df['Z'][0],df['Z'][1]*pwm,low=-1.8,high=0.3))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -373,15 +369,14 @@ def NGC1407_2017_priors(velz_mean,sigma_mean):
 
 def NGC2695_KCWI_priors(velz_mean,sigma_mean):
     df = NGC2695_df
-    #pwm = 2.0 #Prior width multiplier (for gaussians)
-    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.TruncatedNormal(df['Z'][0],df['Z'][1]*pwm,low=-1.8,high=0.3))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -444,14 +439,14 @@ def NGC2695_KCWI_priors(velz_mean,sigma_mean):
 def NGC2695_2012_priors(velz_mean,sigma_mean):
     df = NGC2695_2012_df
     #pwm = 2.0 #Prior width multiplier (for gaussians)
-    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1]*pwm,low=10.0,high=14.0))
+    age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)
     Z = numpyro.sample('Z', dist.TruncatedNormal(df['Z'][0],df['Z'][1]*pwm,low=-1.8,high=0.3))
     imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.TruncatedNormal(df['nah'][0],df['nah'][1]*pwm,low=-0.3,high=1.0))
@@ -519,7 +514,7 @@ def MWimf_priors(velz_mean,sigma_mean):
     imf2 = 2.3
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -588,7 +583,7 @@ def default_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -657,7 +652,7 @@ def NGC1277center_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -725,7 +720,7 @@ def NGC1277outer_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -793,7 +788,7 @@ def NGC1407_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))
@@ -861,7 +856,7 @@ def NGC1600_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Normal(0.46,0.2))
@@ -930,7 +925,7 @@ def NGC2695_priors(velz_mean,sigma_mean):
     imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
     velz = numpyro.sample('velz', dist.Normal(velz_mean,0.5))
     velz = velz * 100
-    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=8.0))
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0))
     sigma = sigma * 100
 
     nah = numpyro.sample('nah',dist.Uniform(-0.3,1))

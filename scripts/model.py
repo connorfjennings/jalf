@@ -17,7 +17,7 @@ class model:
                   ssp_type = 'VCJ_v9',chem_type='atlas',atlas_imf='krpa',
                   ang_per_poly_degree = 100,grange=50,weights_file='NA',
                   fit_two_ages=True,fit_emlines=True,fit_h3h4=True,
-                  ):
+                  ang_per_poly_degree_15000_mult = 1.0):
         #--------KNOW FIT OPTIONS----------#
         self.fit_two_ages=fit_two_ages
         self.fit_emlines =fit_emlines
@@ -166,7 +166,10 @@ class model:
                 self.fit_regions_data_ind.append(tuple((i_start_data,i_stop_data)))
 
                 region_size = fit_regions[i,1] - fit_regions[i,0]
-                poly_deg = int(np.floor(region_size/ang_per_poly_degree))
+                if fit_regions[i,1] > 1.5e4:
+                    poly_deg = int(np.floor(region_size/(ang_per_poly_degree*ang_per_poly_degree_15000_mult)))
+                else:
+                    poly_deg = int(np.floor(region_size/ang_per_poly_degree))
                 self.fit_regions_poly_deg.append(poly_deg)
                 if loud: print(f'Region {i} has size {region_size:.2f} ang, normalized with poly degree {poly_deg}')
 

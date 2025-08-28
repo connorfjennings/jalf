@@ -17,18 +17,19 @@ def jalf(filename, priorname, tag):
     #--------PARAMETERS TO EDIT---------#
 
     burn_in_length = 500 #numpyro calls this "warmup"
-    samples_length = 1500
+    samples_length = 2000
 
-    ang_per_poly_degree = 200
+    ang_per_poly_degree = 100
+    ang_per_poly_degree_15000_mult = 1.5
 
 
     calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
 
     #infiles
-    ssp_type = 'C3K_v5' #'VCJ_v9'
+    ssp_type = 'VCJ_v9'#'C3K_BaSTI'
     chem_type='atlas'
     atlas_imf='krpa'
-    weights_type = 'default'#'H2O_weights'
+    weights_type = 'none'#'H2O_weights'
     #weights here work differently from how they do in alf: they are applied to the final velocity
     #shifted values, and don't move with the input spectra. To-deweight suspicious lines (i.e. water)
 
@@ -86,7 +87,8 @@ def jalf(filename, priorname, tag):
     #setup the model
     mo = model(indata_file,
                ssp_type = ssp_type,chem_type=chem_type,atlas_imf=atlas_imf,
-               ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file)
+               ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file,
+               ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult)
 
     #get data from model
     params = (jnp.log10(8.0),0.0,1.3,2.3,0.0,100.0,\
@@ -118,7 +120,7 @@ def jalf(filename, priorname, tag):
                 0.0,0.0)
         _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
-            numpyro.sample(mo.region_name_list[i],dist.StudentT(1,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
+            numpyro.sample(mo.region_name_list[i],dist.StudentT(5,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
             #numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
 
     rng_key = random.PRNGKey(42)
@@ -193,7 +195,8 @@ def jalf(filename, priorname, tag):
         print('Calculating alpha values...')
         mo = model(indata_file,
                ssp_type = 'VCJ_v8',chem_type=chem_type,atlas_imf=atlas_imf,
-               ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file)
+               ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file,
+               ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult)
         idata = m2l.get_alpha_posterior(idata,mo)
 
 

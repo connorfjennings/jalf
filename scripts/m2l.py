@@ -122,7 +122,7 @@ def get_alpha_posterior(idata,mo):
     }
     posterior_samples = idata.posterior
 
-    chains, draws = posterior_samples['age'].shape[:2]
+    chains, draws = posterior_samples[list(posterior_samples.keys())[0]].shape[:2]
 
     sampled_params = []
 
@@ -137,7 +137,7 @@ def get_alpha_posterior(idata,mo):
             
             sampled_params.append(arr)
             
-        elif pname == 'imf2':
+        elif (pname == 'imf2') & ('imf1' in posterior_samples):
             # If 'imf2' is missing, duplicate 'imf1'
             print('duplicating imf1=imf2')
             arr = copy.copy(posterior_samples['imf1'])

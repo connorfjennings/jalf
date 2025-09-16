@@ -19,7 +19,7 @@ def jalf(filename, priorname, tag):
     #--------PARAMETERS TO EDIT---------#
 
     burn_in_length = 500 #numpyro calls this "warmup"
-    samples_length = 2000
+    samples_length = 1000
 
     ang_per_poly_degree = 100
     ang_per_poly_degree_15000_mult = 1.5 #multiplier for bins greater than 15000 ang
@@ -28,7 +28,7 @@ def jalf(filename, priorname, tag):
     StudentT_dof = 10 #make very large to approach normal errors
 
     calc_alpha = True #adds alpha=(M/L)/(M/L)MW to the final paramater chain
-    make_spectra_summary = True #makes a .pkl file to help make plots fast
+    make_spectra_summary = False #makes a .pkl file to help make plots fast
     target_sigma = 500 #km/s, one of the summary outputs will have spectra smoothed to this dispersion
 
     #infiles
@@ -39,40 +39,8 @@ def jalf(filename, priorname, tag):
     #weights here work differently from how they do in alf: they are applied to the final velocity
     #shifted values, and don't move with the input spectra. To-deweight suspicious lines (i.e. water)
 
-    #define the prior function
-    if priorname == 'NGC1277_center':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277center_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC1277_outer':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277outer_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC1407':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1407_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC1600':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1600_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC2695':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC1407_KCWI':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1407_KCWI_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC2695_KCWI':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_KCWI_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC1407_2017':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1407_2017_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC2695_2012':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_2012_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC2695_2017':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_2017_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'NGC1600_2017':
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1600_2017_priors(velz_mean_est,sigma_mean_est)
-    elif priorname == 'MWimf':
-        calc_alpha = False
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.MWimf_priors(velz_mean_est,sigma_mean_est)
-    elif (priorname == 'fixed_imf_NGC1407_2017') or (priorname == 'fixed_imf_NGC1600_2017') or (priorname == 'fixed_imf_NGC2695_2017'):
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.fixed_imf_priors(velz_mean_est,sigma_mean_est,df_name=priorname)
-    else:
-        get_priors = lambda velz_mean_est,sigma_mean_est: priors.default_priors(velz_mean_est,sigma_mean_est)
-        print('using default priors')
-
     #todo, set grange bassed on assumed max velocity dispersion, grange=50 should be good for sigma<500km/s
-    grange=70
+    grange=50
 
     progress_bar_bool = True #turn this off if running using slurm
 
@@ -97,14 +65,44 @@ def jalf(filename, priorname, tag):
                ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file,
                ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult,
                poly_degree_13300=poly_degree_13300)
+    
+    #define the prior function
+    if priorname == 'NGC1277_center':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277center_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC1277_outer':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277outer_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC1407':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1407_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC1600':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1600_priors(velz_mean_est,sigma_mean_est)
+    elif priorname == 'NGC2695':
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC2695_priors(velz_mean_est,sigma_mean_est)
+    elif (priorname == 'NGC1407_KCWI') or\
+        (priorname == 'NGC2695_KCWI') or\
+        (priorname == 'NGC1407_2017') or\
+        (priorname == 'NGC1600_2017') or\
+        (priorname == 'NGC2695_2017'):
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.infile_priors(velz_mean_est,sigma_mean_est,df_name=priorname,n_groups=mo.n_groups)
+    elif priorname == 'MWimf':
+        calc_alpha = False
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.MWimf_priors(velz_mean_est,sigma_mean_est,n_groups=mo.n_groups)
+    elif (priorname == 'fixed_imf_NGC1407_2017') or (priorname == 'fixed_imf_NGC1600_2017') or (priorname == 'fixed_imf_NGC2695_2017'):
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.fixed_imf_priors(velz_mean_est,sigma_mean_est,df_name=priorname)
+    else:
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.default_priors(velz_mean_est,sigma_mean_est,n_groups=mo.n_groups)
+        print('using default priors')
 
     #get data from model
-    params = (jnp.log10(12.0),0.0,1.3,2.3,0.0,100.0,\
-                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
-                -6.0,10.0,-6.0,\
-                jnp.log10(2.0),-6.0,\
-                0.0,100.0,-6.0,-6.0,-6.0,-6.0,-6.0,-6.0,\
-                0.0,0.0)
+
+    velz0  = jnp.zeros((mo.n_groups,), dtype=jnp.float32)
+    sigma0 = jnp.full((mo.n_groups,), 100.0, dtype=jnp.float32)
+
+    params = (jnp.log10(12.0), 0.0, 1.3, 2.3, velz0, sigma0,
+            0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+            -6.0,10.0,-6.0,
+            jnp.log10(2.0),-6.0,
+            0.0,100.0,-6.0,-6.0,-6.0,-6.0,-6.0,-6.0,
+            0.0,0.0)
 
     wl_d_region, flux_d_region, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
     
@@ -112,24 +110,28 @@ def jalf(filename, priorname, tag):
     #-------estimate radial velocity and dispersion-------#
     print('Getting initial velocity estimates...')
     def vel_fit():
-        #fit just velz and sigma
-        velz = numpyro.sample('velz', dist.Normal(0.0,5))
-        velz = velz * 100
-        sigma = numpyro.sample('sigma', dist.Uniform(0.2,8))
-        sigma = sigma * 100
-        #df = numpyro.sample("df", dist.Exponential(1.0))
-        error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(2.0),1.0))
+        velz_g  = numpyro.sample('velz_g',  dist.Normal(0.0, 5).expand([mo.n_groups])) * 100
+        sigma_g = numpyro.sample('sigma_g', dist.Uniform(0.2, 8).expand([mo.n_groups])) * 100
+        error_scale_g = numpyro.sample('error_scale_g', dist.LogNormal(jnp.log(2.0), 1.0).expand([mo.n_groups]))
 
-        params = (jnp.log10(10.0),0.0,1.3,2.3,velz,sigma,\
-                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
-                -6.0,10.0,-6.0,\
-                jnp.log10(2.0),-6.0,\
-                0.0,100.0,-6.0,-6.0,-6.0,-6.0,-6.0,-6.0,\
-                0.0,0.0)
-        _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
+        params = (
+            jnp.log10(10.0), 0.0, 1.3, 2.3, velz_g, sigma_g,  # age,Z,imf1,imf2, velz,sigma (ignored)
+            0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,  # abundances ...
+            jnp.log10(2.0), 10.0, -6.0,   # loghot,hotteff,logm7g
+            jnp.log10(2.0), -6.0,         # age_young, log_frac_young
+            0.0, 100.0, -6.0, -6.0, -6.0, -6.0, -6.0, -6.0,  # emlines placeholders
+            0.0, 0.0,  # h3,h4
+        )
+
+        _, _, dflux_d_region, _, flux_mn_region = mo.model_flux_regions(params)
+
         for i in range(mo.n_regions):
-            numpyro.sample(mo.region_name_list[i],dist.StudentT(StudentT_dof,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
-            #numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
+            g = mo.region_group_ids[i]
+            numpyro.sample(
+                mo.region_name_list[i],
+                dist.StudentT(StudentT_dof, flux_mn_region[i], dflux_d_region[i] * error_scale_g[g]),
+                obs=flux_d_region[i]
+            )
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(vel_fit)
@@ -139,25 +141,26 @@ def jalf(filename, priorname, tag):
         num_samples=500,
         progress_bar = progress_bar_bool,
     )
-    mcmc.run(rng_key)
+    mcmc.run(rng_key,extra_fields=("potential_energy",))
     mcmc.print_summary()
     vel_posterior_samples = mcmc.get_samples()
-    velz_mean_est = jnp.mean(vel_posterior_samples['velz'])
-    velz_std_est = jnp.std(vel_posterior_samples['velz'])
-    sigma_mean_est = jnp.mean(vel_posterior_samples['sigma'])
-    sigma_std_est = jnp.std(vel_posterior_samples['sigma'])
+    velz_g_mean_est  = jnp.mean(vel_posterior_samples['velz_g'], axis=0)
+    sigma_g_mean_est = jnp.mean(vel_posterior_samples['sigma_g'], axis=0)
 
     #--------DEFINE PRIORS AND DO THE ACTUAL FIT---------#
     print('Starting main run...')
     def model_fit():
         
-        params, error_scale = get_priors(velz_mean_est,sigma_mean_est)
+        params, error_scale_g = get_priors(velz_g_mean_est,sigma_g_mean_est)
         
-        _, _, dflux_d_region, flux_m_region, flux_mn_region = mo.model_flux_regions(params)
+        _, _, dflux_d_region, _, flux_mn_region = mo.model_flux_regions(params)
         for i in range(mo.n_regions):
-            numpyro.sample(mo.region_name_list[i],dist.StudentT(10,flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
-            #numpyro.sample(mo.region_name_list[i],dist.Normal(flux_mn_region[i],dflux_d_region[i]*error_scale),obs=flux_d_region[i])
-
+            g = mo.region_group_ids[i]
+            numpyro.sample(
+                mo.region_name_list[i],
+                dist.StudentT(StudentT_dof, flux_mn_region[i], dflux_d_region[i] * error_scale_g[g]),
+                obs=flux_d_region[i]
+            )
 
     rng_key = random.PRNGKey(42)
     kernel = NUTS(model_fit)
@@ -181,14 +184,16 @@ def jalf(filename, priorname, tag):
     #set initial parameters for a faster fit
     param_info, potential_fn, transform_fn, _ = initialize_model(rng_key, model_fit)
     mutable_constrained = deepcopy(param_info[0])
-    mutable_constrained['velz'] = jnp.array(velz_mean_est)
-    mutable_constrained['sigma'] = jnp.array(sigma_mean_est)
+    mutable_constrained['velz_g']  = velz_g_mean_est
+    mutable_constrained['sigma_g'] = sigma_g_mean_est
+
     init_unconstrained = transform_fn(mutable_constrained)
 
-    mcmc.run(rng_key,init_params=init_unconstrained)
+    mcmc.run(rng_key,init_params=init_unconstrained,extra_fields=("potential_energy",))
     
     mcmc.print_summary()
     posterior_samples = mcmc.get_samples()
+    print(sorted(mcmc.get_samples().keys()))
     print('Run Finished!')   
 
     if tag == '':
@@ -208,7 +213,8 @@ def jalf(filename, priorname, tag):
               'loghot','hotteff','logm7g',
               'age_young','log_frac_young',
               'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
-              'h3','h4']
+              'h3','h4',
+              'velz_g','sigma_g']
         default_values = {
             'age':np.log10(13.5),'Z':0.0,'imf1':1.3,'imf2':2.3,'velz':0.0,'sigma':300.0,'nah':0.0,'cah':0.0,'feh':0.0,'ch':0.0,'nh':0.0,
             'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'teff':0.0,
@@ -239,7 +245,7 @@ def jalf(filename, priorname, tag):
                 if pname == 'age':
                     arr = np.log10(arr)
                     map_v = np.log10(map_v)
-                elif pname in ['velz', 'sigma', 'teff']:
+                elif pname in ['velz', 'sigma', 'teff','velz_g','sigma_g']:
                     arr = arr * 100
                     map_v = map_v * 100
             elif (pname == 'imf2') & ('imf1' in posterior_samples):
@@ -253,7 +259,7 @@ def jalf(filename, priorname, tag):
                 map_v = default
             best_params_for_model.append(map_v)
 
-            if pname == 'sigma':
+            if (pname == 'sigma') or (pname == 'sigma_g'):
                 arr = np.sqrt(arr**2+100**2) #THIS ONLY WORKS FOR THE VCJ MODELS!!!!
                 map_v = np.sqrt(map_v**2+100**2)
             if (pname[-1]=='h') & (pname != 'logemline_h'):

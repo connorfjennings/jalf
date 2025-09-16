@@ -180,6 +180,18 @@ class model:
             self.region_name_list = []
             for i in range(self.n_regions):
                 self.region_name_list.append(f"Region {i+1}")
+            if self.fit_regions.shape[1] >= 3:
+                raw_g = self.fit_regions[:, 2].astype(int)
+                # normalize to 0-based internal ids
+                g0 = raw_g - raw_g.min() if raw_g.min() == 1 else raw_g
+                self.region_group_ids = list(map(int, g0))
+                print(self.region_group_ids)
+            else:
+                self.region_group_ids = [0] * self.n_regions
+            self.n_groups = int(np.max(self.region_group_ids)) + 1 if len(self.region_group_ids) else 1
+            if loud: print(f'There are {self.n_groups} different kinematic groups')
+        else:
+            self.n_groups = 1
 
     def get_response(self,chem_name,logt,z,abund,flux_solar):
         value_grid, flux_grid = self.chem_dict[chem_name]
@@ -198,7 +210,7 @@ class model:
         return hotflux
     hotspec_interp = jit(hotspec_interp,static_argnames=('self'))
 
-    def get_smoothed_region(self,wl,flux,sigma,wl_range_ind,h3,h4):
+    def get_smoothed_region(self,wl,flux,velz,sigma,wl_range_ind,h3,h4):
         # Clip indices to valid range
         i_start_pad = wl_range_ind[0]-self.grange#jnp.maximum(wl_range_ind[0] - grange, 0)
         i_stop_pad = wl_range_ind[1]+self.grange#jnp.minimum(wl_range_ind[1] + grange, wl.shape[0])
@@ -206,6 +218,9 @@ class model:
         size = i_stop_pad - i_start_pad
         wl_1 = lax.dynamic_slice(wl, (i_start_pad,), (size,))
         flux_1 = lax.dynamic_slice(flux, (i_start_pad,), (size,))
+
+        clight = 299792.46
+        wl_1 = wl_1 / (velz / clight + 1.0)
 
         flux_1 = velbroad(wl_1,flux_1,sigma,gausshermite=self.fit_h3h4,h3=h3,h4=h4)
         wl_2 = wl_1[self.grange:-self.grange]
@@ -237,7 +252,7 @@ class model:
         #keep in mind "age" here is actually log10(age)
         
         flux = self.ssp_interp(age,Z,imf1,imf2)
-        wl = self.lam_model / (velz/clight + 1)
+        wl = self.lam_model #/ (velz/clight + 1)
 
         if self.fit_two_ages:
             flux_young = self.ssp_interp(age_young,Z,imf1,imf2)
@@ -330,16 +345,22 @@ class model:
 
     def model_flux_total(self,params):
         clight = 299792.46
-        age,Z,imf1,imf2,velz,sigma,\
+        age,Z,imf1,imf2,velz_g,sigma_g,\
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
         velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
         h3,h4 = params
+
+        if self.n_groups == 1:
+            velz_g = jnp.array([velz_g])
+            sigma_g = jnp.array([sigma_g])
         
         wl, flux = self.model_flux(params)
+        g0 = 0
+        wl = wl / (velz_g[g0] / clight + 1.0)
+        flux = velbroad(wl, flux, sigma_g[g0], gausshermite=self.fit_h3h4, h3=h3, h4=h4)
 
-        flux = velbroad(wl,flux,sigma,gausshermite=self.fit_h3h4,h3=h3,h4=h4)
 
         #emission lines
         #I am handling this slightly differently than alf. There, sigma2 is used to disperse the em lines BEFORE sigma is used to
@@ -350,9 +371,49 @@ class model:
 
         return wl, flux
 
+    '''def model_flux_groups(self, params):
+        clight = 299792.46
+        # unpack the usual 40 scalars
+        age,Z,imf1,imf2,velz,sigma, \
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff, \
+        loghot,hotteff,logm7g, \
+        age_young, log_frac_young, \
+        velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii, \
+        h3,h4 = params[:40]
+
+        wl_rest, flux_rest = self.model_flux(params)
+
+        # read group arrays if present; else fall back to scalars
+        if len(params) > 40:
+            velz_g, sigma_g = params[40], params[41]       # shape [G]
+        else:
+            velz_g = jnp.array([velz])
+            sigma_g = jnp.array([sigma])
+
+        # build per-group shifted wavelength grids: shape [G, Nλ]
+        wl_g = wl_rest[None, :] / (velz_g[:, None]/clight + 1.0)
+
+        # vmap velbroad across groups
+        def _broad_one(wl_row, sg):
+            return velbroad(wl_row, flux_rest, sg, gausshermite=self.fit_h3h4, h3=h3, h4=h4)
+
+        flux_b = vmap(_broad_one, in_axes=(0, 0))(wl_g, sigma_g)  # [G, Nλ]
+
+        if self.fit_emlines:
+            # compute emission lines on each group's grid and add
+            def _em_on(wl_row):
+                return self.model_emission_lines(wl_row, params)
+            em = vmap(_em_on, in_axes=(0,))(wl_g)  # [G, Nλ]
+            flux_b = flux_b + em
+
+        return wl_g, flux_b
+
+    model_flux_groups = jit(model_flux_groups, static_argnames=('self',))'''
+
+
     def model_flux_regions(self,params):
         clight = 299792.46
-        age,Z,imf1,imf2,velz,sigma,\
+        age,Z,imf1,imf2,velz_g,sigma_g,\
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
@@ -361,6 +422,7 @@ class model:
         #keep in mind "age" here is actually log10(age)
         
         wl, flux = self.model_flux(params)
+        #wl_g, flux_g = self.model_flux_groups(params)
 
         wl_d_region = []
         flux_d_region = []
@@ -368,9 +430,19 @@ class model:
         flux_m_region = []
         flux_mn_region = []
 
-        for i in range(self.n_regions):
-            wl_m,flux_m = self.get_smoothed_region(wl,flux,sigma,wl_range_ind=self.fit_regions_model_ind[i],h3=h3,h4=h4)
+        if self.n_groups == 1:
+            velz_g = jnp.array([velz_g])
+            sigma_g = jnp.array([sigma_g])
 
+        for i in range(self.n_regions):
+            g = self.region_group_ids[i] if self.n_groups > 1 else 0
+
+            wl_m, flux_m = self.get_smoothed_region(
+                wl, flux,
+                velz=velz_g[g], sigma=sigma_g[g],
+                wl_range_ind=self.fit_regions_model_ind[i],
+                h3=h3, h4=h4
+            )
             #emission lines
             if self.fit_emlines:
                 emline_spec = self.model_emission_lines(wl_m,params)
@@ -380,6 +452,7 @@ class model:
             _, dflux_d = self.get_region(self.lam_data,self.dflux_data,wl_range_ind=self.fit_regions_data_ind[i])
 
             flux_m_interp = jnp.interp(wl_d,wl_m,flux_m)
+            #flux_m_interp = jnp.interp(wl_d, wl_g[g], flux_g[g])
             wl_d_zeroed = wl_d - wl_d[0]
             p = jnp.polyfit(wl_d_zeroed,flux_d/flux_m_interp,self.fit_regions_poly_deg[i])
             flux_m_norm = flux_m_interp * jnp.polyval(p,wl_d_zeroed)

@@ -105,64 +105,78 @@ def get_alpha(param_set,mo):
     alpha_array = m2l_fit/m2l_kroupa
     return alpha_array[0]
 
-def get_alpha_posterior(idata,mo):
-    param_list = ['age','Z','imf1','imf2','velz','sigma','nah','cah','feh','ch','nh',
-              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','teff',
-              'loghot','hotteff','logm7g',
-              'age_young','log_frac_young',
-              'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
-              'h3','h4']
-    default_values = {
-        'age':np.log10(10),'Z':0.0,'imf1':1.3,'imf2':2.3,'velz':0.0,'sigma':300.0,'nah':0.0,'cah':0.0,'feh':0.0,'ch':0.0,'nh':0.0,
-        'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'teff':0.0,
-        'loghot':-10,'hotteff':10,'logm7g':-10,
-        'age_young':np.log10(2),'log_frac_young':-10,
-        'velz2':0.0,'sigma2':300,'logemline_h':-10,'logemline_oiii':-10,'logemline_oii':-10,'logemline_nii':-10,'logemline_ni':-10,'logemline_sii':-10,
-        'h3':0.0,'h4':0.0
-    }
-    posterior_samples = idata.posterior
+def get_alpha_posterior(idata, mo):
+    posterior = idata.posterior
 
-    chains, draws = posterior_samples[list(posterior_samples.keys())[0]].shape[:2]
+    # dims & coords just for ('chain','draw')
+    dims2 = posterior['age'].dims              # usually ('chain','draw')
+    coord_subset = {d: posterior.coords[d] for d in dims2}
+    C = posterior.sizes[dims2[0]]
+    D = posterior.sizes[dims2[1]]
+
+    # Use scalar deterministics for kinematics of group 0
+    param_list = [
+        'age','Z','imf1','imf2','velz_0','sigma_0',
+        'nah','cah','feh','ch','nh','ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','teff',
+        'loghot','hotteff','logm7g',
+        'age_young','log_frac_young',
+        'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
+        'h3','h4'
+    ]
+
+    # defaults (2D: chain x draw)
+    default_values = {
+        'age': np.log10(10), 'Z': 0.0, 'imf1': 1.3, 'imf2': 2.3,
+        'velz_0': 0.0, 'sigma_0': 300.0,
+        'nah': 0.0,'cah': 0.0,'feh': 0.0,'ch': 0.0,'nh': 0.0,
+        'ah': 0.0,'tih': 0.0,'mgh': 0.0,'sih': 0.0,'mnh': 0.0,
+        'bah': 0.0,'nih': 0.0,'coh': 0.0,'euh': 0.0,'srh': 0.0,'kh': 0.0,'vh': 0.0,'cuh': 0.0,'teff': 0.0,
+        'loghot': -10.0,'hotteff': 10.0,'logm7g': -10.0,
+        'age_young': np.log10(2.0),'log_frac_young': -10.0,
+        'velz2': 0.0,'sigma2': 300.0,
+        'logemline_h': -10.0,'logemline_oiii': -10.0,'logemline_oii': -10.0,
+        'logemline_nii': -10.0,'logemline_ni': -10.0,'logemline_sii': -10.0,
+        'h3': 0.0,'h4': 0.0
+    }
 
     sampled_params = []
-
     for pname in param_list:
-        if pname in posterior_samples:
-            arr = posterior_samples[pname]
-            
+        if pname in posterior:
+            arr = posterior[pname].values  # (chain, draw)
             if pname == 'age':
                 arr = np.log10(arr)
-            elif pname in ['velz', 'sigma', 'teff']:
-                arr = arr * 100
-            
+            elif pname in ('velz_0','sigma_0','teff'):
+                arr = arr * 100.0
             sampled_params.append(arr)
-            
-        elif (pname == 'imf2') & ('imf1' in posterior_samples):
-            # If 'imf2' is missing, duplicate 'imf1'
-            print('duplicating imf1=imf2')
-            arr = copy.copy(posterior_samples['imf1'])
-            sampled_params.append(arr)
+        elif pname == 'imf2' and 'imf1' in posterior:
+            # backwards compat if imf2 isn’t sampled
+            sampled_params.append(posterior['imf1'].values)
+        elif pname in ('velz_0','sigma_0'):
+            # backwards compat if old runs only had 'velz'/'sigma'
+            key_fallback = 'velz' if pname == 'velz_0' else 'sigma'
+            if key_fallback in posterior:
+                arr = posterior[key_fallback].values
+                if key_fallback in ('velz','sigma'):
+                    arr = arr * 100.0
+                sampled_params.append(arr)
+            else:
+                sampled_params.append(np.full((C, D), default_values[pname]))
         else:
-            # Default values
-            shape = (chains, draws)
-            default = default_values[pname]
-            arr = np.full(shape, default)
-            sampled_params.append(arr)
+            sampled_params.append(np.full((C, D), default_values[pname]))
 
-    params_array = np.stack([np.array(p) for p in sampled_params], axis=-1)
+    params_array = np.stack(sampled_params, axis=-1)  # (chain, draw, P)
     flat_params = params_array.reshape(-1, params_array.shape[-1])
-    alpha_vals = np.array([get_alpha(p,mo) for p in flat_params])
-    alpha_vals = alpha_vals.reshape((chains, draws))
 
-    alpha_da = xr.DataArray(
-        alpha_vals,
-        coords=posterior_samples.coords,
-        dims=posterior_samples['age'].dims
-    )
+    # Compute alpha on the flattened samples
+    alpha_vals = np.empty(flat_params.shape[0], dtype=float)
+    for i, p in enumerate(flat_params):
+        alpha_vals[i] = get_alpha(p, mo)
+    alpha_vals = alpha_vals.reshape(C, D)
 
-    idata.posterior['alpha'] = alpha_da
-
+    alpha_da = xr.DataArray(alpha_vals, dims=dims2, coords=coord_subset)
+    idata.posterior = idata.posterior.assign(alpha=alpha_da)
     return idata
+
             
           
     

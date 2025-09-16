@@ -214,7 +214,8 @@ def smooth_ssp_models(data,lam_ssp,flux_ssp_grid):
     return batch_smooth_scan(lam_ssp,flux_ssp_grid,ires_model,batch_size=256)
 
 def read_data(datfile):
-    fit_regions = get_alf_header(datfile+'.dat') * 10000 #convert to angstrom
+    fit_regions = get_alf_header(datfile+'.dat')
+    fit_regions[:,:2] *= 10000 #convert to angstroms
     data = np.loadtxt(datfile+'.dat',unpack=True)
     lam_data, flux_data, dflux_data, weights_data, ires_data = jnp.array(data)
     return fit_regions, lam_data, flux_data, dflux_data, weights_data, ires_data

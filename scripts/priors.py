@@ -11,7 +11,7 @@ NGC2695_2012_df = pd.read_csv('../infiles/NGC2695_2012_param_summary.csv')
 NGC2695_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 NGC1600_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 
-pwm = 2.0 #multiplier on ABUNDANCES ONLY since you might want to relax this
+pwm = 1.0 #multiplier on ABUNDANCES ONLY since you might want to relax this
 error_scale_dist = dist.LogNormal(jnp.log(5.0),2.0)
 
 def fixed_imf_priors(velz_mean,sigma_mean,df_name,n_groups=1):

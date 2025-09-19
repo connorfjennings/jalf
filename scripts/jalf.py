@@ -40,7 +40,7 @@ def jalf(filename, priorname, tag):
     #shifted values, and don't move with the input spectra. To-deweight suspicious lines (i.e. water)
 
     #todo, set grange bassed on assumed max velocity dispersion, grange=50 should be good for sigma<500km/s
-    grange=50
+    grange=100
 
     progress_bar_bool = True #turn this off if running using slurm
 
@@ -110,12 +110,12 @@ def jalf(filename, priorname, tag):
     #-------estimate radial velocity and dispersion-------#
     print('Getting initial velocity estimates...')
     def vel_fit():
-        velz_g  = numpyro.sample('velz_g',  dist.Normal(0.0, 5).expand([mo.n_groups])) * 100
-        sigma_g = numpyro.sample('sigma_g', dist.Uniform(0.2, 8).expand([mo.n_groups])) * 100
-        error_scale_g = numpyro.sample('error_scale_g', dist.LogNormal(jnp.log(2.0), 1.0).expand([mo.n_groups]))
+        velz_g  = numpyro.sample('velz_g',  dist.Normal(0.0, 2).expand([mo.n_groups])) * 100
+        sigma_g = numpyro.sample('sigma_g', dist.Uniform(0.2, 5).expand([mo.n_groups])) * 100
+        error_scale_g = numpyro.sample('error_scale_g', dist.LogNormal(jnp.log(1.0), 2.0).expand([mo.n_groups]))
 
         params = (
-            jnp.log10(10.0), 0.0, 1.3, 2.3, velz_g, sigma_g,  # age,Z,imf1,imf2, velz,sigma (ignored)
+            jnp.log10(13.0), 0.0, 1.3, 2.3, velz_g, sigma_g,  # age,Z,imf1,imf2, velz,sigma (ignored)
             0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,  # abundances ...
             jnp.log10(2.0), 10.0, -6.0,   # loghot,hotteff,logm7g
             jnp.log10(2.0), -6.0,         # age_young, log_frac_young
@@ -129,10 +129,16 @@ def jalf(filename, priorname, tag):
             g = mo.region_group_ids[i]
             numpyro.sample(
                 mo.region_name_list[i],
-                dist.StudentT(StudentT_dof, flux_mn_region[i], dflux_d_region[i] * error_scale_g[g]),
+                dist.StudentT(2, flux_mn_region[i], dflux_d_region[i] * error_scale_g[g]),
                 obs=flux_d_region[i]
             )
-
+        '''i=3
+        g = mo.region_group_ids[i]
+        numpyro.sample(
+            mo.region_name_list[i],
+            dist.StudentT(StudentT_dof, flux_mn_region[i], dflux_d_region[i] * error_scale_g[g]),
+            obs=flux_d_region[i]
+        )'''
     rng_key = random.PRNGKey(42)
     kernel = NUTS(vel_fit)
     mcmc = MCMC(

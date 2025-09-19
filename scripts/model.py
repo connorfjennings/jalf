@@ -220,7 +220,7 @@ class model:
         flux_1 = lax.dynamic_slice(flux, (i_start_pad,), (size,))
 
         clight = 299792.46
-        wl_1 = wl_1 / (velz / clight + 1.0)
+        wl_1 = wl_1 * (velz / clight + 1.0)
 
         flux_1 = velbroad(wl_1,flux_1,sigma,gausshermite=self.fit_h3h4,h3=h3,h4=h4)
         wl_2 = wl_1[self.grange:-self.grange]
@@ -343,23 +343,23 @@ class model:
         return emline_spec
     model_emission_lines = jit(model_emission_lines,static_argnames=('self'))
 
+    def _as_1d(x):
+        x = jnp.asarray(x)
+        return x if x.ndim == 1 else jnp.expand_dims(x, 0)
+
     def model_flux_total(self,params):
         clight = 299792.46
-        age,Z,imf1,imf2,velz_g,sigma_g,\
+        age,Z,imf1,imf2,velz_0,sigma_0,\
         nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
         velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
         h3,h4 = params
 
-        if self.n_groups == 1:
-            velz_g = jnp.array([velz_g])
-            sigma_g = jnp.array([sigma_g])
         
         wl, flux = self.model_flux(params)
-        g0 = 0
-        wl = wl / (velz_g[g0] / clight + 1.0)
-        flux = velbroad(wl, flux, sigma_g[g0], gausshermite=self.fit_h3h4, h3=h3, h4=h4)
+        wl = wl * (velz_0 / clight + 1.0)
+        flux = velbroad(wl, flux, sigma_0, gausshermite=self.fit_h3h4, h3=h3, h4=h4)
 
 
         #emission lines

@@ -40,7 +40,11 @@ def jalf(filename, priorname, tag):
     #shifted values, and don't move with the input spectra. To-deweight suspicious lines (i.e. water)
 
     #define the prior function
-    if priorname == 'NGC1277_center':
+    adjust_pname = False
+    if priorname[-3:] == '.nc':
+        get_priors = lambda velz_mean_est,sigma_mean_est, priorname: priors.prior_from_file(velz_mean_est,sigma_mean_est, priorname)
+        adjust_pname = True
+    elif priorname == 'NGC1277_center':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277center_priors(velz_mean_est,sigma_mean_est)
     elif priorname == 'NGC1277_outer':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277outer_priors(velz_mean_est,sigma_mean_est)
@@ -191,6 +195,8 @@ def jalf(filename, priorname, tag):
     posterior_samples = mcmc.get_samples()
     print('Run Finished!')   
 
+    if adjust_pname:
+        priorname = priorname[:-3]
     if tag == '':
         output_name_base = filename+'_'+priorname
     else:

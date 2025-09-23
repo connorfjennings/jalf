@@ -189,7 +189,8 @@ def jalf(filename, priorname, tag):
     mutable_constrained['sigma'] = jnp.array(sigma_mean_est)
     init_unconstrained = transform_fn(mutable_constrained)
 
-    mcmc.run(rng_key,init_params=init_unconstrained)
+    mcmc.run(rng_key,init_params=init_unconstrained,
+             extra_fields=('potential_energy',))
     
     mcmc.print_summary()
     posterior_samples = mcmc.get_samples()
@@ -227,18 +228,15 @@ def jalf(filename, priorname, tag):
         }
         samples = mcmc.get_samples(group_by_chain=True)
         ef = mcmc.get_extra_fields(group_by_chain=True)
-        pe = ef["potential_energy"]                     # shape [n_chains, n_draws]
-        ind = jnp.argmin(pe)                            
-        chain_ind = jnp.int32(ind // pe.shape[1])
-        draw_ind  = jnp.int32(ind %  pe.shape[1])
-
-        map_params = {k: v[chain_ind, draw_ind] for k, v in samples.items()}
+        pe = np.asarray(ef["potential_energy"])                 # (chains, draws)
+        chain_ind, draw_ind = np.unravel_index(pe.argmin(), pe.shape)
+        map_params = {k: np.asarray(v)[chain_ind, draw_ind] for k, v in samples.items()}
+        posterior_samples = {k: np.asarray(v) for k, v in samples.items()}  # keep everything as NumPy below
+        chains, draws = next(iter(posterior_samples.values())).shape[:2]
 
         best_params_for_model = [] #fed into mo.model_flux_regions() etc to get spectra
         best_params_true = {} #the physical values of the parameters, with standard errors
-
-        chains, draws = posterior_samples[list(posterior_samples.keys())[0]].shape[:2]
-
+        
         for pname in param_list:
             if pname in posterior_samples:
                 arr = posterior_samples[pname]

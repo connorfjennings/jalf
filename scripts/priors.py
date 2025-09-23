@@ -26,7 +26,7 @@ def prior_from_file(velz_mean,sigma_mean,filename):
               'age_young','log_frac_young',
               'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
               'h3','h4']
-    param_list_prior = ['age','Z','velz','sigma','nah','cah','feh','ch','nh',
+    param_list_prior = ['age','Z','nah','cah','feh','ch','nh',
               'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh']
     df = {}
     for p in param_list_prior:

@@ -30,7 +30,7 @@ def prior_from_file(velz_mean,sigma_mean,filename):
     df = {}
     for p in param_list_prior:
         samples = posterior_samples[p]
-        df[p] = jnp.mean(samples), jnp.std(samples)
+        df[p] = float(jnp.mean(samples)), float(jnp.std(samples))
     
     age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)

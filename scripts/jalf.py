@@ -42,7 +42,7 @@ def jalf(filename, priorname, tag):
     #define the prior function
     adjust_pname = False
     if priorname[-3:] == '.nc':
-        get_priors = lambda velz_mean_est,sigma_mean_est, priorname: priors.prior_from_file(velz_mean_est,sigma_mean_est, priorname)
+        get_priors = lambda velz_mean_est,sigma_mean_est: priors.prior_from_file(velz_mean_est,sigma_mean_est,filename=priorname)
         adjust_pname = True
     elif priorname == 'NGC1277_center':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277center_priors(velz_mean_est,sigma_mean_est)

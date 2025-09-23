@@ -1,5 +1,6 @@
 import numpyro
 import jax.numpy as jnp
+import numpy as np
 import numpyro.distributions as dist
 from jax import jit
 import pandas as pd
@@ -30,7 +31,7 @@ def prior_from_file(velz_mean,sigma_mean,filename):
     df = {}
     for p in param_list_prior:
         samples = posterior_samples[p]
-        df[p] = float(jnp.mean(samples)), float(jnp.std(samples))
+        df[p] = [float(np.mean(samples)), float(np.std(samples))]
     
     age = numpyro.sample("age", dist.TruncatedNormal(df['age'][0],df['age'][1],low=10.0,high=14.0))
     logage = jnp.log10(age)

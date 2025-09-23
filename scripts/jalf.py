@@ -196,11 +196,13 @@ def jalf(filename, priorname, tag):
     print('Run Finished!')   
 
     if adjust_pname:
-        priorname = priorname[:-3]
-    if tag == '':
-        output_name_base = filename+'_'+priorname
+        priorname_out = priorname[:-3]
     else:
-        output_name_base = filename+'_'+priorname+'_'+tag
+        priorname_out = priorname
+    if tag == '':
+        output_name_base = filename+'_'+priorname_out
+    else:
+        output_name_base = filename+'_'+priorname_out+'_'+tag
     outdir = jalf_home+'results/'
 
     idata = az.from_numpyro(mcmc)

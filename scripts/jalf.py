@@ -217,7 +217,8 @@ def jalf(filename, priorname, tag):
               'loghot','hotteff','logm7g',
               'age_young','log_frac_young',
               'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
-              'h3','h4']
+              'h3','h4',
+              'alpha']
         default_values = {
             'age':np.log10(13.5),'Z':0.0,'imf1':1.3,'imf2':2.3,'velz':0.0,'sigma':300.0,'nah':0.0,'cah':0.0,'feh':0.0,'ch':0.0,'nh':0.0,
             'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'teff':0.0,
@@ -235,6 +236,7 @@ def jalf(filename, priorname, tag):
         chains, draws = next(iter(posterior_samples.values())).shape[:2]
 
         best_params_for_model = [] #fed into mo.model_flux_regions() etc to get spectra
+        sampled_params = [] #used to calculate alpha
         best_params_true = {} #the physical values of the parameters, with standard errors
         
         for pname in param_list:
@@ -258,6 +260,7 @@ def jalf(filename, priorname, tag):
                 arr = np.full(shape, default)
                 map_v = default
             best_params_for_model.append(map_v)
+            sampled_params.append(arr)
 
             if pname == 'sigma':
                 arr = np.sqrt(arr**2+100**2) #THIS ONLY WORKS FOR THE VCJ MODELS!!!!
@@ -267,6 +270,18 @@ def jalf(filename, priorname, tag):
                 map_v = map_v + map_params['Z']
             param_err = np.std(arr)
             best_params_true[pname] = [map_v,param_err]
+
+        params_array = np.stack([np.array(p) for p in sampled_params], axis=-1)
+        flat_params = params_array.reshape(-1, params_array.shape[-1])
+        mo = model(indata_file,
+               ssp_type = 'VCJ_v8',chem_type=chem_type,atlas_imf=atlas_imf,
+               ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file,
+               ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult)
+        alpha_vals = np.array([m2l.get_alpha(p,mo) for p in flat_params])
+        alpha_vals = alpha_vals.reshape((chains, draws))
+        alpha_err = np.std(alpha_vals)
+        alpha_map = m2l.get_alpha(best_params_for_model,mo)
+        best_params_true['alpha'] = [alpha_map,alpha_err]
 
         region_spectra = {}
 

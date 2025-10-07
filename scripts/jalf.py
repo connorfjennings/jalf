@@ -265,11 +265,15 @@ def jalf(filename, priorname, tag):
             if pname == 'sigma':
                 arr = np.sqrt(arr**2+100**2) #THIS ONLY WORKS FOR THE VCJ MODELS!!!!
                 map_v = np.sqrt(map_v**2+100**2)
-            if (pname[-1]=='h') & (pname != 'logemline_h'):
-                arr = arr + posterior_samples['Z']
-                map_v = map_v + map_params['Z']
+
             param_err = np.std(arr)
             best_params_true[pname] = [map_v,param_err]
+
+            if (pname[-1]=='h') & (pname != 'logemline_h'):
+                arr_total = arr + posterior_samples['Z']
+                map_v_total = map_v + map_params['Z']
+                param_err_total = np.std(arr_total)
+                best_params_true[pname+'total'] = [map_v_total,param_err_total]
 
         params_array = np.stack([np.array(p) for p in sampled_params], axis=-1)
         flat_params = params_array.reshape(-1, params_array.shape[-1])

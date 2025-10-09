@@ -217,8 +217,7 @@ def jalf(filename, priorname, tag):
               'loghot','hotteff','logm7g',
               'age_young','log_frac_young',
               'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
-              'h3','h4',
-              'alpha']
+              'h3','h4']
         default_values = {
             'age':np.log10(13.5),'Z':0.0,'imf1':1.3,'imf2':2.3,'velz':0.0,'sigma':300.0,'nah':0.0,'cah':0.0,'feh':0.0,'ch':0.0,'nh':0.0,
             'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'teff':0.0,
@@ -267,13 +266,20 @@ def jalf(filename, priorname, tag):
                 map_v = np.sqrt(map_v**2+100**2)
 
             param_err = np.std(arr)
-            best_params_true[pname] = [map_v,param_err]
+            best_params_true[pname] = [map_v,param_err,np.percentile(arr,(16,50,84))]
 
             if (pname[-1]=='h') & (pname != 'logemline_h'):
                 arr_total = arr + posterior_samples['Z']
                 map_v_total = map_v + map_params['Z']
                 param_err_total = np.std(arr_total)
-                best_params_true[pname+'total'] = [map_v_total,param_err_total]
+                best_params_true[pname+'total'] = [map_v_total,param_err_total,np.percentile(arr,(16,50,84))]
+
+                if pname != 'feh':
+                    arr_relative = arr - posterior_samples['feh']
+                    map_v_relative = map_v - posterior_samples['feh']
+                    best_params_true[pname+'relative'] = [map_v_relative,
+                                                          np.std(arr_relative),
+                                                          np.percentile(arr_relative,(16,50,84))]
 
         params_array = np.stack([np.array(p) for p in sampled_params], axis=-1)
         flat_params = params_array.reshape(-1, params_array.shape[-1])
@@ -285,7 +291,7 @@ def jalf(filename, priorname, tag):
         alpha_vals = alpha_vals.reshape((chains, draws))
         alpha_err = np.std(alpha_vals)
         alpha_map = m2l.get_alpha(best_params_for_model,mo)
-        best_params_true['alpha'] = [alpha_map,alpha_err]
+        best_params_true['alpha'] = [alpha_map,alpha_err,np.percentile(alpha_vals,(16,50,84))]
 
         region_spectra = {}
 

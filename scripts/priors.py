@@ -16,20 +16,31 @@ NGC1600_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 pwm = 1.0 #multiplier on ABUNDANCES ONLY since you might want to relax this
 error_scale_dist = dist.LogNormal(jnp.log(5.0),2.0)
 
+def prior_moments(df,key,default_mean=0.0,default_std=0.3):
+    #param summary files (and .nc posteriors) written before a parameter was
+    #added won't contain that column - e.g. crh. Fall back to a broad prior
+    #centred on solar rather than raising a KeyError.
+    if key in df:
+        return df[key][0], df[key][1]
+    return default_mean, default_std
+
 def prior_from_file(velz_mean,sigma_mean,filename):
     filepath = '../infiles/'+filename
     idata = az.from_netcdf(filepath)
     posterior_samples = idata.posterior
     param_list_full = ['age','Z','imf1','imf2','velz','sigma','nah','cah','feh','ch','nh',
-              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh',
+              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','crh',
               'loghot','hotteff','logm7g',
               'age_young','log_frac_young',
               'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
               'h3','h4']
     param_list_prior = ['age','Z','nah','cah','feh','ch','nh',
-              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh']
+              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','crh']
     df = {}
     for p in param_list_prior:
+        #skip params absent from older posteriors; prior_moments supplies a default
+        if p not in posterior_samples:
+            continue
         samples = posterior_samples[p]
         df[p] = [float(np.mean(samples)), float(np.std(samples))]
     
@@ -62,6 +73,8 @@ def prior_from_file(velz_mean,sigma_mean,filename):
     kh = numpyro.sample('kh',dist.TruncatedNormal(df['kh'][0],df['kh'][1]*pwm,low=-0.3,high=0.5))
     vh = numpyro.sample('vh',dist.TruncatedNormal(df['vh'][0],df['vh'][1]*pwm,low=-0.3,high=0.5))
     cuh = numpyro.sample('cuh',dist.TruncatedNormal(df['cuh'][0],df['cuh'][1]*pwm,low=-0.3,high=0.5))
+    crh_mean, crh_std = prior_moments(df,'crh')
+    crh = numpyro.sample('crh',dist.TruncatedNormal(crh_mean,crh_std*pwm,low=-0.3,high=0.5))
 
     teff = 0#numpyro.sample('teff',dist.Normal(df['teff'][0],df['teff'][1]))
     teff = teff*100
@@ -93,7 +106,7 @@ def prior_from_file(velz_mean,sigma_mean,filename):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -140,6 +153,7 @@ def fixed_imf_priors(velz_mean,sigma_mean,df_name):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -171,7 +185,7 @@ def fixed_imf_priors(velz_mean,sigma_mean,df_name):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -209,6 +223,8 @@ def NGC1600_2017_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.TruncatedNormal(df['kh'][0],df['kh'][1]*pwm,low=-0.3,high=0.5))
     vh = numpyro.sample('vh',dist.TruncatedNormal(df['vh'][0],df['vh'][1]*pwm,low=-0.3,high=0.5))
     cuh = numpyro.sample('cuh',dist.TruncatedNormal(df['cuh'][0],df['cuh'][1]*pwm,low=-0.3,high=0.5))
+    crh_mean, crh_std = prior_moments(df,'crh')
+    crh = numpyro.sample('crh',dist.TruncatedNormal(crh_mean,crh_std*pwm,low=-0.3,high=0.5))
 
     teff = 0#numpyro.sample('teff',dist.Normal(df['teff'][0],df['teff'][1]))
     teff = teff*100
@@ -240,7 +256,7 @@ def NGC1600_2017_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -278,6 +294,8 @@ def NGC2695_2017_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.TruncatedNormal(df['kh'][0],df['kh'][1]*pwm,low=-0.3,high=0.5))
     vh = numpyro.sample('vh',dist.TruncatedNormal(df['vh'][0],df['vh'][1]*pwm,low=-0.3,high=0.5))
     cuh = numpyro.sample('cuh',dist.TruncatedNormal(df['cuh'][0],df['cuh'][1]*pwm,low=-0.3,high=0.5))
+    crh_mean, crh_std = prior_moments(df,'crh')
+    crh = numpyro.sample('crh',dist.TruncatedNormal(crh_mean,crh_std*pwm,low=-0.3,high=0.5))
 
     teff = 0#numpyro.sample('teff',dist.Normal(df['teff'][0],df['teff'][1]))
     teff = teff*100
@@ -309,7 +327,7 @@ def NGC2695_2017_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -347,6 +365,8 @@ def NGC1407_KCWI_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.TruncatedNormal(df['kh'][0],df['kh'][1]*pwm,low=-0.3,high=0.5))
     vh = numpyro.sample('vh',dist.TruncatedNormal(df['vh'][0],df['vh'][1]*pwm,low=-0.3,high=0.5))
     cuh = numpyro.sample('cuh',dist.TruncatedNormal(df['cuh'][0],df['cuh'][1]*pwm,low=-0.3,high=0.5))
+    crh_mean, crh_std = prior_moments(df,'crh')
+    crh = numpyro.sample('crh',dist.TruncatedNormal(crh_mean,crh_std*pwm,low=-0.3,high=0.5))
 
     teff = 0#numpyro.sample('teff',dist.Normal(df['teff'][0],df['teff'][1]))
     teff = teff*100
@@ -378,7 +398,7 @@ def NGC1407_KCWI_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -416,6 +436,8 @@ def NGC1407_2017_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.TruncatedNormal(df['kh'][0],df['kh'][1]*pwm,low=-0.3,high=0.5))
     vh = numpyro.sample('vh',dist.TruncatedNormal(df['vh'][0],df['vh'][1]*pwm,low=-0.3,high=0.5))
     cuh = numpyro.sample('cuh',dist.TruncatedNormal(df['cuh'][0],df['cuh'][1]*pwm,low=-0.3,high=0.5))
+    crh_mean, crh_std = prior_moments(df,'crh')
+    crh = numpyro.sample('crh',dist.TruncatedNormal(crh_mean,crh_std*pwm,low=-0.3,high=0.5))
 
     teff = 0#numpyro.sample('teff',dist.Normal(df['teff'][0],df['teff'][1]))
     teff = teff*100
@@ -447,7 +469,7 @@ def NGC1407_2017_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -485,6 +507,8 @@ def NGC2695_KCWI_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.TruncatedNormal(df['kh'][0],df['kh'][1]*pwm,low=-0.3,high=0.5))
     vh = numpyro.sample('vh',dist.TruncatedNormal(df['vh'][0],df['vh'][1]*pwm,low=-0.3,high=0.5))
     cuh = numpyro.sample('cuh',dist.TruncatedNormal(df['cuh'][0],df['cuh'][1]*pwm,low=-0.3,high=0.5))
+    crh_mean, crh_std = prior_moments(df,'crh')
+    crh = numpyro.sample('crh',dist.TruncatedNormal(crh_mean,crh_std*pwm,low=-0.3,high=0.5))
 
     teff = 0#numpyro.sample('teff',dist.Normal(df['teff'][0],df['teff'][1]))
     teff = teff*100
@@ -516,7 +540,7 @@ def NGC2695_KCWI_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -555,6 +579,8 @@ def NGC2695_2012_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.TruncatedNormal(df['kh'][0],df['kh'][1]*pwm,low=-0.3,high=0.5))
     vh = numpyro.sample('vh',dist.TruncatedNormal(df['vh'][0],df['vh'][1]*pwm,low=-0.3,high=0.5))
     cuh = numpyro.sample('cuh',dist.TruncatedNormal(df['cuh'][0],df['cuh'][1]*pwm,low=-0.3,high=0.5))
+    crh_mean, crh_std = prior_moments(df,'crh')
+    crh = numpyro.sample('crh',dist.TruncatedNormal(crh_mean,crh_std*pwm,low=-0.3,high=0.5))
 
     teff = 0#numpyro.sample('teff',dist.Normal(df['teff'][0],df['teff'][1]))
     teff = teff*100
@@ -586,7 +612,7 @@ def NGC2695_2012_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -623,6 +649,7 @@ def MWimf_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -654,7 +681,7 @@ def MWimf_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -692,6 +719,7 @@ def default_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -723,7 +751,7 @@ def default_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -761,6 +789,7 @@ def NGC1277center_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -792,7 +821,7 @@ def NGC1277center_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -829,6 +858,7 @@ def NGC1277outer_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -860,7 +890,7 @@ def NGC1277outer_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -897,6 +927,7 @@ def NGC1407_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -928,7 +959,7 @@ def NGC1407_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -965,6 +996,7 @@ def NGC1600_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -996,7 +1028,7 @@ def NGC1600_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -1034,6 +1066,7 @@ def NGC2695_priors(velz_mean,sigma_mean):
     kh = numpyro.sample('kh',dist.Uniform(-0.3,0.5))
     vh = numpyro.sample('vh',dist.Uniform(-0.3,0.5))
     cuh = numpyro.sample('cuh',dist.Uniform(-0.3,0.5))
+    crh = numpyro.sample('crh',dist.Uniform(-0.3,0.5))
 
     teff = 0#numpyro.sample('teff',dist.Uniform(-0.5,0.5))
     teff = teff*100
@@ -1065,7 +1098,7 @@ def NGC2695_priors(velz_mean,sigma_mean):
     error_scale = numpyro.sample("error_scale",error_scale_dist)
 
     params = (logage,Z,imf1,imf2,velz,sigma,\
-                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+                nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
                 loghot,hotteff,logm7g,\
                 logage_young,log_frac_young,\
                 velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\

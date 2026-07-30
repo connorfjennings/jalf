@@ -104,7 +104,7 @@ def jalf(filename, priorname, tag):
 
     #get data from model
     params = (jnp.log10(12.0),0.0,1.3,2.3,0.0,100.0,\
-                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
+                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
                 -6.0,10.0,-6.0,\
                 jnp.log10(2.0),-6.0,\
                 0.0,100.0,-6.0,-6.0,-6.0,-6.0,-6.0,-6.0,\
@@ -125,7 +125,7 @@ def jalf(filename, priorname, tag):
         error_scale = numpyro.sample("error_scale",dist.LogNormal(jnp.log10(2.0),1.0))
 
         params = (jnp.log10(10.0),0.0,1.3,2.3,velz,sigma,\
-                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
+                0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,\
                 -6.0,10.0,-6.0,\
                 jnp.log10(2.0),-6.0,\
                 0.0,100.0,-6.0,-6.0,-6.0,-6.0,-6.0,-6.0,\
@@ -213,14 +213,14 @@ def jalf(filename, priorname, tag):
         clight = 299792.46
         #this is all stuff you typically want to do any time you visualize results
         param_list = ['age','Z','imf1','imf2','velz','sigma','nah','cah','feh','ch','nh',
-              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','teff',
+              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','crh','teff',
               'loghot','hotteff','logm7g',
               'age_young','log_frac_young',
               'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
               'h3','h4']
         default_values = {
             'age':np.log10(13.5),'Z':0.0,'imf1':1.3,'imf2':2.3,'velz':0.0,'sigma':300.0,'nah':0.0,'cah':0.0,'feh':0.0,'ch':0.0,'nh':0.0,
-            'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'teff':0.0,
+            'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'crh':0.0,'teff':0.0,
             'loghot':-10,'hotteff':10,'logm7g':-10,
             'age_young':np.log10(2),'log_frac_young':-10,
             'velz2':0.0,'sigma2':300,'logemline_h':-10,'logemline_oiii':-10,'logemline_oii':-10,'logemline_nii':-10,'logemline_ni':-10,'logemline_sii':-10,
@@ -284,7 +284,7 @@ def jalf(filename, priorname, tag):
         params_array = np.stack([np.array(p) for p in sampled_params], axis=-1)
         flat_params = params_array.reshape(-1, params_array.shape[-1])
         mo = model(indata_file,
-               ssp_type = 'VCJ_v8',chem_type=chem_type,atlas_imf=atlas_imf,
+               ssp_type = ssp_type,chem_type=chem_type,atlas_imf=atlas_imf,
                ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file,
                ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult)
         alpha_vals = np.array([m2l.get_alpha(p,mo) for p in flat_params])
@@ -333,7 +333,7 @@ def jalf(filename, priorname, tag):
     if calc_alpha:
         print('Calculating alpha values...')
         mo = model(indata_file,
-               ssp_type = 'VCJ_v8',chem_type=chem_type,atlas_imf=atlas_imf,
+               ssp_type = ssp_type,chem_type=chem_type,atlas_imf=atlas_imf,
                ang_per_poly_degree = ang_per_poly_degree,grange=grange,weights_file=weights_file,
                ang_per_poly_degree_15000_mult=ang_per_poly_degree_15000_mult)
         idata = m2l.get_alpha_posterior(idata,mo)

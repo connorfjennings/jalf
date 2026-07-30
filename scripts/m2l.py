@@ -107,14 +107,14 @@ def get_alpha(param_set,mo):
 
 def get_alpha_posterior(idata,mo):
     param_list = ['age','Z','imf1','imf2','velz','sigma','nah','cah','feh','ch','nh',
-              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','teff',
+              'ah','tih','mgh','sih','mnh','bah','nih','coh','euh','srh','kh','vh','cuh','crh','teff',
               'loghot','hotteff','logm7g',
               'age_young','log_frac_young',
               'velz2','sigma2','logemline_h','logemline_oiii','logemline_oii','logemline_nii','logemline_ni','logemline_sii',
               'h3','h4']
     default_values = {
         'age':np.log10(10),'Z':0.0,'imf1':1.3,'imf2':2.3,'velz':0.0,'sigma':300.0,'nah':0.0,'cah':0.0,'feh':0.0,'ch':0.0,'nh':0.0,
-        'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'teff':0.0,
+        'ah':0.0,'tih':0.0,'mgh':0.0,'sih':0.0,'mnh':0.0,'bah':0.0,'nih':0.0,'coh':0.0,'euh':0.0,'srh':0.0,'kh':0.0,'vh':0.0,'cuh':0.0,'crh':0.0,'teff':0.0,
         'loghot':-10,'hotteff':10,'logm7g':-10,
         'age_young':np.log10(2),'log_frac_young':-10,
         'velz2':0.0,'sigma2':300,'logemline_h':-10,'logemline_oiii':-10,'logemline_oii':-10,'logemline_nii':-10,'logemline_ni':-10,'logemline_sii':-10,

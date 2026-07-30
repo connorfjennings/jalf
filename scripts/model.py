@@ -229,7 +229,7 @@ class model:
         #does everything except the final velocity broadening and emission lines
         clight = 299792.46
         age,Z,imf1,imf2,velz,sigma,\
-        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
         velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -263,6 +263,7 @@ class model:
         flux = flux * self.get_response('k',age,Z,kh,flux_solar)
         flux = flux * self.get_response('v',age,Z,vh,flux_solar)
         flux = flux * self.get_response('cu',age,Z,cuh,flux_solar)
+        flux = flux * self.get_response('cr',age,Z,crh,flux_solar)
 
         #special case for teff, force use of 13gyr model
         flux = flux * self.get_response('teff',jnp.log10(13),Z,teff,flux_solar)
@@ -280,7 +281,7 @@ class model:
     def model_emission_lines(self,wl,params):
         clight = 299792.46
         age,Z,imf1,imf2,velz,sigma,\
-        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
         velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -331,7 +332,7 @@ class model:
     def model_flux_total(self,params):
         clight = 299792.46
         age,Z,imf1,imf2,velz,sigma,\
-        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
         velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\
@@ -353,7 +354,7 @@ class model:
     def model_flux_regions(self,params):
         clight = 299792.46
         age,Z,imf1,imf2,velz,sigma,\
-        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,teff,\
+        nah,cah,feh,ch,nh,ah,tih,mgh,sih,mnh,bah,nih,coh,euh,srh,kh,vh,cuh,crh,teff,\
         loghot,hotteff,logm7g,\
         age_young, log_frac_young,\
         velz2,sigma2,logemline_h,logemline_oiii,logemline_oii,logemline_nii,logemline_ni,logemline_sii,\

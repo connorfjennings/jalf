@@ -51,7 +51,9 @@ def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa',wl_to_interp = N
     atlas_imf = 'krpa'
 
     z_strings  = ['m1.5','m1.0','m0.5','p0.0','p0.2']
-    z_values = np.array([-1.5,-1.0,-0.5,0.0,0.2])
+    #NB: the top node is the file named 'Zp0.2' but its actual [Z/H] is +0.25,
+    #matching alf's sspgrid%logzgrid in setup.f90 (and the '+0.25' hotstar files)
+    z_values = np.array([-1.5,-1.0,-0.5,0.0,0.25])
     t_strings  = ['01','03','05','09','13']
     t_values = np.array([1.0,3.0,5.0,9.0,13.0])
     logt_values = np.log10(t_values)
@@ -163,7 +165,9 @@ def read_chem_models(infiles,chem_type='atlas',atlas_imf='krpa',wl_to_interp = N
 
 def read_ssp_models(infiles,ssp_type='VCJ_v9'):
     z_strings  = ['m1.5','m1.0','m0.5','p0.0','p0.2']
-    z_values = np.array([-1.5,-1.0,-0.5,0.0,0.2])
+    #NB: the top node is the file named 'Zp0.2' but its actual [Z/H] is +0.25,
+    #matching alf's sspgrid%logzgrid in setup.f90 (and the '+0.25' hotstar files)
+    z_values = np.array([-1.5,-1.0,-0.5,0.0,0.25])
     t_strings  = ['01.0','03.0','05.0','07.0','09.0','11.0','13.5']
     t_values = np.array([1.0,3.0,5.0,7.0,9.0,11.0,13.5])
     logt_values = np.log10(t_values)

@@ -93,6 +93,8 @@ def getm2l(lam,spec,logage,zh,imf1,imf2):
     return np.array(m2l)
 
 def get_alpha(param_set,mo):
+    param_set = copy.copy(param_set)
+    param_set[33:39] = [-10.0]*6 #zero the emission lines
 
     lam, flux = mo.model_flux_total(param_set)
     m2l_fit = getm2l(lam,flux,param_set[0],param_set[1],param_set[2],param_set[3])

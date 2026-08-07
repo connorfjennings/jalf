@@ -5,6 +5,7 @@ import numpyro.distributions as dist
 from jax import jit
 import pandas as pd
 import arviz as az
+import pickle
 
 NGC1407_df = pd.read_csv('../infiles/NGC1407_KCWI_param_summary.csv')
 NGC1407_2017_df = pd.read_csv('../infiles/NGC1407_2017_param_summary.csv')
@@ -15,6 +16,95 @@ NGC1600_2017_df = pd.read_csv('../infiles/NGC2695_2017_param_summary.csv')
 
 pwm = 1.0 #multiplier on ABUNDANCES ONLY since you might want to relax this
 error_scale_dist = dist.LogNormal(jnp.log(5.0),2.0)
+
+def prior_interpolate_MVN(velz_mean,sigma_mean,r,filename):
+    NAMES = ['age','Z','nah','cah','feh','ch','nh','ah','tih','mgh','sih','mnh',
+         'bah','nih','coh','euh','srh','kh','vh','cuh','crh']   # order is the contract
+    BOUNDS  = {'age':(10.0,14.0), 'Z':(-1.8,0.3), 'nah':(-0.3,1.0), 'nh':(-0.3,1.0),
+           'bah':(-0.6,0.5), 'euh':(-0.6,0.5)}
+    DEFAULT = (-0.3, 0.5)
+
+    def get_prior_samples(z_array,r):
+        return np.array([np.poly1d(z_array[i,:])(r) for i in range(z_array.shape[0])])
+    def get_prior_MVN(z_dict,r):
+        X = np.stack([np.asarray(get_prior_samples(z_dict[k],r)).ravel() for k in NAMES], axis=-1)
+        mu  = X.mean(0)
+        var  = X.var(0)
+
+        keep = [i for i,v in enumerate(var) if v > 1e-14]
+        drop = [i for i,v in enumerate(var) if v <= 1e-14]
+        if drop:
+            print(f'MVN: dropping zero-variance params {[NAMES[i] for i in drop]} '
+                f'-> held fixed at their constant values')
+
+        FIXED     = {NAMES[i]: float(mu[i]) for i in drop}      # e.g. {'feh': 0.0}
+        NAMES_mvn = [NAMES[i] for i in keep]
+        X         = X[:, keep]
+
+        mu  = X.mean(0)
+        Sig = np.cov(X, rowvar=False)
+        L   = np.linalg.cholesky(Sig + 1e-12*np.eye(Sig.shape[0]))     # jitter guards near-singular
+        
+        mvn = dist.MultivariateNormal(loc=jnp.array(mu), scale_tril=jnp.array(L))
+        return mvn, NAMES_mvn, FIXED
+        
+    fpkl = open('../infiles/'+filename,'rb')
+    z_dict = pickle.load(fpkl)
+    fpkl.close()
+    mvn, NAMES_mvn, FIXED = get_prior_MVN(z_dict,r)
+
+    lo = jnp.array([BOUNDS.get(k, DEFAULT)[0] for k in NAMES_mvn])
+    hi = jnp.array([BOUNDS.get(k, DEFAULT)[1] for k in NAMES_mvn])
+
+    theta = numpyro.sample('theta', dist.Uniform(lo, hi).to_event(1))  # box support + bijector
+    numpyro.factor('mvn_prior', mvn.log_prob(theta))                   # unnormalised MVN
+
+    v = {k: numpyro.deterministic(k, theta[i]) for i, k in enumerate(NAMES_mvn)}
+    for k, val in FIXED.items():
+        v[k] = numpyro.deterministic(k, jnp.array(val))     # feh still appears in the .nc
+        
+    # --- transforms + the 20 params the MVN doesn't cover ---
+    logage = jnp.log10(v['age'])
+
+    imf1 = numpyro.sample('imf1', dist.Uniform(0.9,3.5))
+    imf2 = numpyro.sample('imf2', dist.Uniform(0.9,3.5))
+    velz  = numpyro.sample('velz',  dist.Normal(velz_mean,0.5)) * 100
+    sigma = numpyro.sample('sigma', dist.TruncatedNormal(sigma_mean,0.5,low=0.1,high=6.0)) * 100
+
+    teff = 0.0
+
+    loghot  = numpyro.sample('loghot',  dist.Uniform(-10.0,-1.0))
+    hotteff = numpyro.sample('hotteff', dist.Uniform(8.0,30.0))
+    logm7g  = numpyro.sample('logm7g',  dist.Uniform(-10.0,-1.0))
+
+    age_young      = numpyro.sample('age_young', dist.Uniform(1,8))
+    logage_young   = jnp.log10(age_young)
+    log_frac_young = numpyro.sample('log_frac_young', dist.Uniform(-10,-1))
+
+    velz2  = numpyro.sample('velz2',  dist.Normal(0,2)) * 100
+    sigma2 = numpyro.sample('sigma2', dist.TruncatedNormal(sigma_mean,1,low=0.1)) * 100
+
+    logemline_h    = numpyro.sample('logemline_h',    dist.Uniform(-10.0,-1.0))
+    logemline_oiii = numpyro.sample('logemline_oiii', dist.Uniform(-10.0,-1.0))
+    logemline_oii  = numpyro.sample('logemline_oii',  dist.Uniform(-10.0,-1.0))
+    logemline_nii  = numpyro.sample('logemline_nii',  dist.Uniform(-10.0,-1.0))
+    logemline_ni   = numpyro.sample('logemline_ni',   dist.Uniform(-10.0,-1.0))
+    logemline_sii  = numpyro.sample('logemline_sii',  dist.Uniform(-10.0,-1.0))
+
+    h3 = numpyro.sample('h3', dist.Normal(0.0,0.1))
+    h4 = numpyro.sample('h4', dist.Normal(0.0,0.1))
+
+    error_scale = numpyro.sample("error_scale", error_scale_dist)
+
+    params = (logage, v['Z'], imf1, imf2, velz, sigma,
+              *[v[k] for k in NAMES[2:]],          # nah..crh - order matches model.py
+              teff,
+              loghot, hotteff, logm7g,
+              logage_young, log_frac_young,
+              velz2, sigma2,
+              logemline_h, logemline_oiii, logemline_oii, logemline_nii, logemline_ni, logemline_sii,
+              h3, h4)
+    return params, error_scale
 
 def prior_moments(df,key,default_mean=0.0,default_std=0.3):
     #param summary files (and .nc posteriors) written before a parameter was

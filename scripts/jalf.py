@@ -15,7 +15,7 @@ from model import model
 import priors
 import smoothing
 
-def jalf(filename, priorname, tag):
+def jalf(filename, priorname, tag, r=None):
     #--------PARAMETERS TO EDIT---------#
 
     burn_in_length = 500 #numpyro calls this "warmup"
@@ -43,6 +43,12 @@ def jalf(filename, priorname, tag):
     adjust_pname = False
     if priorname[-3:] == '.nc':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.prior_from_file(velz_mean_est,sigma_mean_est,filename=priorname)
+        adjust_pname = True
+    elif priorname[-4:] == '.pkl':
+        if r is None:
+            raise ValueError('gradient .pkl priors need a radius (5th arg)')
+        get_priors = lambda velz_mean_est,sigma_mean_est: \
+            priors.prior_interpolate_MVN(velz_mean_est, sigma_mean_est, r, priorname)
         adjust_pname = True
     elif priorname == 'NGC1277_center':
         get_priors = lambda velz_mean_est,sigma_mean_est: priors.NGC1277center_priors(velz_mean_est,sigma_mean_est)
@@ -197,7 +203,7 @@ def jalf(filename, priorname, tag):
     print('Run Finished!')   
 
     if adjust_pname:
-        priorname_out = priorname[:-3]
+        priorname_out = priorname.rsplit('.',1)[0]     # handles .nc and .pkl
     else:
         priorname_out = priorname
     if tag == '':
@@ -351,5 +357,6 @@ if __name__ == "__main__":
     filename = argv_l[1]
     priorname = argv_l[2] if n_argv >=3 else 'default'
     tag = argv_l[3] if n_argv >= 4 else ''
+    r = float(argv_l[4]) if n_argv >=5 else None
     #should implement some sort of multiprocessing
-    jalf(filename, priorname, tag)
+    jalf(filename, priorname, tag, r)

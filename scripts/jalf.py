@@ -189,6 +189,9 @@ def jalf(filename, priorname, tag, r=None):
         )
 
     #set initial parameters for a faster fit
+    #actually, don't do this, causes a bunch of problems and apparently NUTS is smart
+    #and doesn't need initialization it just finds stuff in a few steps around a prior
+    '''
     param_info, potential_fn, transform_fn, _ = initialize_model(rng_key, model_fit)
     mutable_constrained = deepcopy(param_info[0])
     mutable_constrained['velz'] = jnp.array(velz_mean_est)
@@ -197,7 +200,13 @@ def jalf(filename, priorname, tag, r=None):
 
     mcmc.run(rng_key,init_params=init_unconstrained,
              extra_fields=('potential_energy',))
-    
+    '''
+    param_info, potential_fn, postprocess_fn, _ = initialize_model(rng_key, model_fit)
+    init_unconstrained = deepcopy(param_info.z)      # already unconstrained, latents only
+
+    mcmc.run(rng_key,init_params=init_unconstrained,
+             extra_fields=('potential_energy',))
+
     mcmc.print_summary()
     posterior_samples = mcmc.get_samples()
     print('Run Finished!')   

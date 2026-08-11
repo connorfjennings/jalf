@@ -43,7 +43,20 @@ def prior_interpolate_MVN(velz_mean,sigma_mean,r,filename):
 
         mu  = X.mean(0)
         Sig = np.cov(X, rowvar=False)
+        w = np.linalg.eigvalsh(Sig)
+        print(f'MVN cond(Sigma) = {w.max()/max(w.min(),1e-300):.2e}, min eig = {w.min():.2e}')
+
         L   = np.linalg.cholesky(Sig + 1e-12*np.eye(Sig.shape[0]))     # jitter guards near-singular
+
+        lo_d = np.array([BOUNDS.get(k, DEFAULT)[0] for k in NAMES_mvn])
+        hi_d = np.array([BOUNDS.get(k, DEFAULT)[1] for k in NAMES_mvn])
+        inside = (X >= lo_d) & (X <= hi_d)
+        print(f'MVN prior at r={r}: {inside.all(-1).mean():.1%} of the sample cloud is inside the box')
+        per = inside.mean(0)
+        for j in np.argsort(per):
+            if per[j] < 0.99:
+                print(f'    {NAMES_mvn[j]:>5}: {per[j]:6.1%} inside   '
+                      f'mean {mu[j]:+.3f}  bounds [{lo_d[j]:+.2f}, {hi_d[j]:+.2f}]')
         
         mvn = dist.MultivariateNormal(loc=jnp.array(mu), scale_tril=jnp.array(L))
         return mvn, NAMES_mvn, FIXED

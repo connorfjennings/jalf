@@ -156,10 +156,11 @@ def get_alpha_posterior(idata,mo):
     alpha_vals = np.array([get_alpha(p,mo) for p in flat_params])
     alpha_vals = alpha_vals.reshape((chains, draws))
 
+    dims = posterior_samples['age'].dims
     alpha_da = xr.DataArray(
         alpha_vals,
-        coords=posterior_samples.coords,
-        dims=posterior_samples['age'].dims
+        coords={d: posterior_samples.coords[d] for d in dims},
+        dims=dims
     )
 
     idata.posterior['alpha'] = alpha_da
